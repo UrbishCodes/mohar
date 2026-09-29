@@ -1,0 +1,3 @@
+Error: anchor-cli 0.32.1 (resolved from anchor-lang dep in /home/hatch/workspace/bharosa/programs/mohar/Cargo.toml) is not installed.
+Run `avm install 0.32.1` to install it.
+EXIT: 1

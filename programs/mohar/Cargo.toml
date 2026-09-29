@@ -1,0 +1,30 @@
+[package]
+name = "mohar"
+version = "0.1.0"
+description = "Mohar — escrow for Nepali freelancers, on Solana"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "mohar"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = "=0.32.1"
+anchor-spl = "=0.32.1"
+# Pinned to pre-edition2024 releases: `anchor build` compiles with the
+# platform-tools' bundled cargo 1.84, which cannot parse edition2024 manifests.
+blake3 = "=1.5.5"
+borsh_pin = { package = "borsh", version = "=1.5.7" }
+indexmap = "=2.9.0"
+proc-macro-crate = "=3.3.0"
+unicode-segmentation = "=1.12.0"
+zeroize = "=1.8.1"
+zeroize_derive = "=1.4.2"

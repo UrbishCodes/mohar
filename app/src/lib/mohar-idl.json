@@ -1,0 +1,907 @@
+{
+  "address": "Ey5QSYnyD4GokFS3H8hiwMyrRVZEbzXnjaRPY6DdAtMQ",
+  "metadata": {
+    "name": "mohar",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Mohar — escrow for Nepali freelancers, on Solana"
+  },
+  "instructions": [
+    {
+      "name": "claim_after_deadline",
+      "docs": [
+        "If the client ghosts after delivery, the freelancer can claim the",
+        "funds once the deadline has passed. No more \"I'll pay next week\"."
+      ],
+      "discriminator": [
+        55,
+        47,
+        158,
+        12,
+        61,
+        132,
+        211,
+        150
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow.client",
+                "account": "Escrow"
+              },
+              {
+                "kind": "account",
+                "path": "escrow.seed",
+                "account": "Escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "freelancer",
+          "signer": true,
+          "relations": [
+            "escrow"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client",
+          "writable": true
+        },
+        {
+          "name": "freelancer_ata",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_escrow",
+      "docs": [
+        "Client creates an escrow and locks `amount` of SPL tokens (e.g. USDC)",
+        "in the vault. The freelancer and an arbiter are named up front."
+      ],
+      "discriminator": [
+        253,
+        215,
+        165,
+        116,
+        36,
+        108,
+        68,
+        80
+      ],
+      "accounts": [
+        {
+          "name": "client",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "freelancer"
+        },
+        {
+          "name": "arbiter"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "client"
+              },
+              {
+                "kind": "arg",
+                "path": "seed"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client_ata",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "seed",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "deadline",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "mark_delivered",
+      "docs": [
+        "Freelancer signals the work is done. Funds stay locked until the",
+        "client releases them (or the deadline passes)."
+      ],
+      "discriminator": [
+        240,
+        118,
+        188,
+        142,
+        64,
+        85,
+        107,
+        18
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow.client",
+                "account": "Escrow"
+              },
+              {
+                "kind": "account",
+                "path": "escrow.seed",
+                "account": "Escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "freelancer",
+          "signer": true,
+          "relations": [
+            "escrow"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "raise_dispute",
+      "docs": [
+        "Either side can escalate to the arbiter while funds are locked."
+      ],
+      "discriminator": [
+        41,
+        243,
+        1,
+        51,
+        150,
+        95,
+        246,
+        73
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow.client",
+                "account": "Escrow"
+              },
+              {
+                "kind": "account",
+                "path": "escrow.seed",
+                "account": "Escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refund",
+      "docs": [
+        "Client cancels before any delivery: full refund to the client."
+      ],
+      "discriminator": [
+        2,
+        96,
+        183,
+        251,
+        63,
+        208,
+        46,
+        46
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow.client",
+                "account": "Escrow"
+              },
+              {
+                "kind": "account",
+                "path": "escrow.seed",
+                "account": "Escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client",
+          "signer": true,
+          "relations": [
+            "escrow"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client_ata",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "release",
+      "docs": [
+        "Client approves the delivery: vault pays the freelancer in full."
+      ],
+      "discriminator": [
+        253,
+        249,
+        15,
+        206,
+        28,
+        127,
+        193,
+        241
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow.client",
+                "account": "Escrow"
+              },
+              {
+                "kind": "account",
+                "path": "escrow.seed",
+                "account": "Escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client",
+          "signer": true,
+          "relations": [
+            "escrow"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "freelancer_ata",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "resolve_dispute",
+      "docs": [
+        "Arbiter rules: true pays the freelancer, false refunds the client."
+      ],
+      "discriminator": [
+        231,
+        6,
+        202,
+        6,
+        96,
+        103,
+        12,
+        230
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow.client",
+                "account": "Escrow"
+              },
+              {
+                "kind": "account",
+                "path": "escrow.seed",
+                "account": "Escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "arbiter",
+          "signer": true,
+          "relations": [
+            "escrow"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "client",
+          "docs": [
+            "must match the recorded client."
+          ],
+          "writable": true
+        },
+        {
+          "name": "freelancer_ata",
+          "writable": true
+        },
+        {
+          "name": "client_ata",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "pay_freelancer",
+          "type": "bool"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Escrow",
+      "discriminator": [
+        31,
+        213,
+        123,
+        187,
+        186,
+        22,
+        218,
+        155
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "DisputeRaised",
+      "discriminator": [
+        246,
+        167,
+        109,
+        37,
+        142,
+        45,
+        38,
+        176
+      ]
+    },
+    {
+      "name": "DisputeResolved",
+      "discriminator": [
+        121,
+        64,
+        249,
+        153,
+        139,
+        128,
+        236,
+        187
+      ]
+    },
+    {
+      "name": "EscrowCreated",
+      "discriminator": [
+        70,
+        127,
+        105,
+        102,
+        92,
+        97,
+        7,
+        173
+      ]
+    },
+    {
+      "name": "EscrowDelivered",
+      "discriminator": [
+        181,
+        195,
+        202,
+        214,
+        106,
+        51,
+        220,
+        208
+      ]
+    },
+    {
+      "name": "EscrowRefunded",
+      "discriminator": [
+        132,
+        209,
+        49,
+        109,
+        135,
+        138,
+        28,
+        81
+      ]
+    },
+    {
+      "name": "EscrowReleased",
+      "discriminator": [
+        131,
+        7,
+        138,
+        104,
+        166,
+        190,
+        113,
+        112
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidAmount",
+      "msg": "Escrow amount must be greater than zero."
+    },
+    {
+      "code": 6001,
+      "name": "InvalidDeadline",
+      "msg": "Deadline must be in the future."
+    },
+    {
+      "code": 6002,
+      "name": "InvalidStatus",
+      "msg": "Escrow is not in the right state for this action."
+    },
+    {
+      "code": 6003,
+      "name": "DeadlineNotReached",
+      "msg": "The deadline has not been reached yet."
+    },
+    {
+      "code": 6004,
+      "name": "Unauthorized",
+      "msg": "Only the client or freelancer can perform this action."
+    },
+    {
+      "code": 6005,
+      "name": "InvalidDestination",
+      "msg": "Token destination is not owned by the intended recipient."
+    }
+  ],
+  "types": [
+    {
+      "name": "DisputeRaised",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "by",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DisputeResolved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "pay_freelancer",
+            "type": "bool"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Escrow",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "client",
+            "type": "pubkey"
+          },
+          {
+            "name": "freelancer",
+            "type": "pubkey"
+          },
+          {
+            "name": "arbiter",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "seed",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "EscrowStatus"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "client",
+            "type": "pubkey"
+          },
+          {
+            "name": "freelancer",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "deadline",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowDelivered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowRefunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowReleased",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "escrow",
+            "type": "pubkey"
+          },
+          {
+            "name": "to",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Funded"
+          },
+          {
+            "name": "Delivered"
+          },
+          {
+            "name": "Released"
+          },
+          {
+            "name": "Refunded"
+          },
+          {
+            "name": "Disputed"
+          },
+          {
+            "name": "Resolved"
+          }
+        ]
+      }
+    }
+  ]
+}

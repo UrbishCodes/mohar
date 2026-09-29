@@ -1,0 +1,94 @@
+info: uninstalling toolchain solana
+info: toolchain solana uninstalled
+    Updating crates.io index
+ Downloading crates ...
+  Downloaded anchor-attribute-program v0.32.2
+  Downloaded arrayref v0.3.9
+  Downloaded anchor-attribute-account v0.32.2
+  Downloaded aead v0.5.2
+  Downloaded ahash v0.8.12
+  Downloaded anchor-attribute-constant v0.32.2
+  Downloaded anchor-derive-space v0.32.2
+  Downloaded anchor-derive-accounts v0.32.2
+  Downloaded block-buffer v0.10.4
+  Downloaded borsh-derive v0.10.4
+  Downloaded anchor-attribute-error v0.32.2
+  Downloaded borsh-schema-derive-internal v0.10.4
+  Downloaded borsh-derive-internal v0.10.4
+  Downloaded anchor-lang-idl v0.1.4
+  Downloaded anchor-attribute-event v0.32.2
+  Downloaded curve25519-dalek-derive v0.1.1
+  Downloaded block-buffer v0.9.0
+  Downloaded heck v0.3.3
+  Downloaded cfg-if v1.0.5
+  Downloaded crypto-common v0.1.7
+  Downloaded spl-pod v0.5.1
+  Downloaded rand_chacha v0.2.2
+  Downloaded five8_core v0.1.2
+  Downloaded rand_chacha v0.3.1
+  Downloaded proc-macro-crate v3.5.0
+  Downloaded opaque-debug v0.3.1
+  Downloaded proc-macro-crate v0.1.5
+  Downloaded libsecp256k1-gen-ecmult v0.2.1
+  Downloaded feature-probe v0.1.1
+  Downloaded anchor-derive-serde v0.32.2
+  Downloaded equivalent v1.0.2
+  Downloaded derivation-path v0.2.0
+  Downloaded libsecp256k1-gen-genmult v0.2.1
+  Downloaded five8_const v0.1.4
+  Downloaded serde_bytes v0.11.19
+  Downloaded pbkdf2 v0.11.0
+  Downloaded solana-derivation-path v2.2.1
+  Downloaded solana-big-mod-exp v2.2.1
+  Downloaded solana-clock v2.2.3
+  Downloaded inout v0.1.4
+  Downloaded solana-account v2.2.1
+  Downloaded solana-decode-error v2.3.0
+  Downloaded solana-cpi v2.2.1
+  Downloaded solana-bincode v2.2.1
+  Downloaded solana-atomic-u64 v2.2.1
+  Downloaded solana-epoch-rewards v2.2.1
+  Downloaded solana-borsh v2.2.1
+  Downloaded solana-invoke v0.4.0
+  Downloaded solana-example-mocks v2.2.1
+  Downloaded generic-array v0.14.7
+  Downloaded solana-keccak-hasher v2.2.1
+  Downloaded solana-fee-calculator v2.2.1
+  Downloaded percent-encoding v2.3.2
+  Downloaded solana-native-token v2.3.0
+  Downloaded solana-msg v2.2.1
+  Downloaded solana-loader-v3-interface v3.0.0
+  Downloaded solana-epoch-schedule v2.2.1
+  Downloaded memoffset v0.9.1
+  Downloaded solana-nonce v2.2.1
+  Downloaded solana-sanitize v2.2.1
+  Downloaded solana-define-syscall v2.3.0
+  Downloaded keccak v0.1.6
+  Downloaded solana-program-memory v2.3.1
+  Downloaded solana-program-entrypoint v2.3.0
+  Downloaded solana-signer v2.2.1
+  Downloaded solana-sdk-ids v2.2.1
+  Downloaded solana-program-pack v2.2.1
+  Downloaded spl-discriminator-derive v0.2.0
+  Downloaded solana-signature v2.3.0
+  Downloaded solana-security-txt v1.1.3
+  Downloaded solana-loader-v3-interface v5.0.0
+  Downloaded solana-hash v2.3.0
+  Downloaded solana-slot-hashes v2.2.1
+  Downloaded solana-short-vec v2.2.1
+  Downloaded solana-slot-history v2.2.1
+  Downloaded solana-seed-derivable v2.2.1
+  Downloaded anchor-lang-idl-spec v0.1.0
+  Downloaded solana-sysvar-id v2.2.1
+  Downloaded solana-last-restart-slot v2.2.1
+  Downloaded qstring v0.7.2
+  Downloaded block-buffer v0.12.1
+error: failed to parse manifest at `/home/hatch/.cargo/registry/src/index.crates.io-6f17d22bba15001f/block-buffer-0.12.1/Cargo.toml`
+
+Caused by:
+  feature `edition2024` is required
+
+  The package requires the Cargo feature called `edition2024`, but that feature is not stabilized in this version of Cargo (1.84.0 (12fe57a9d 2025-04-07)).
+  Consider trying a more recent nightly release.
+  See https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#edition-2024 for more information about the status of this feature.
+EXIT: 1

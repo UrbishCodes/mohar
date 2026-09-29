@@ -1,6 +1,22 @@
-node_modules/
+# Rust / Anchor
 target/
+.anchor/
 test-ledger/
-.env
-*.log
+
+# Node
+node_modules/
+app/dist/
+
+# Logs
+logs/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
 .DS_Store
+
+# Env
+.env
+.env.local
