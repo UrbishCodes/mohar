@@ -3,7 +3,8 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import type { PublicKey } from "@solana/web3.js";
 import type { View } from "../components/TopBar";
 import { getProgram, statusName, type EscrowAccount } from "../lib/mohar";
-import { StatusPill, Timeline, formatAmount, formatDeadline, shortAddr } from "../components/ui";
+import { StatusPill, Timeline } from "../components/ui";
+import { formatAmount, formatDeadline, shortAddr } from "../lib/format";
 
 export function EscrowCard({
   escrow,
@@ -48,38 +49,46 @@ export default function Dashboard({ go }: { go: (v: View) => void }) {
   const { connection } = useConnection();
   const wallet = useWallet();
   const [escrows, setEscrows] = useState<EscrowAccount[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"all" | "client" | "freelancer">("all");
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const load = useCallback(async () => {
-    if (!wallet.publicKey) return;
-    setLoading(true);
-    try {
-      const program = getProgram(connection, wallet);
-      const all = await program.account.escrow.all();
-      const normalized = (
-        all as { publicKey: PublicKey; account: object }[]
-      ).map(
-        (e: { publicKey: PublicKey; account: object }) =>
-          ({ publicKey: e.publicKey, ...e.account } as EscrowAccount)
-      );
-      const mine = normalized.filter(
-        (e) =>
-          e.client.equals(wallet.publicKey!) ||
-          e.freelancer.equals(wallet.publicKey!)
-      );
-      mine.sort((a, b) => b.deadline.toNumber() - a.deadline.toNumber());
-      setEscrows(mine);
-    } catch (err) {
-      console.error("Failed to load escrows:", err);
-    } finally {
-      setLoading(false);
-    }
+  const fetchEscrows = useCallback(async (): Promise<EscrowAccount[]> => {
+    if (!wallet.publicKey) return [];
+    const program = getProgram(connection, wallet);
+    const all = await program.account.escrow.all();
+    const normalized = (
+      all as { publicKey: PublicKey; account: object }[]
+    ).map(
+      (e: { publicKey: PublicKey; account: object }) =>
+        ({ publicKey: e.publicKey, ...e.account } as EscrowAccount)
+    );
+    const mine = normalized.filter(
+      (e) =>
+        e.client.equals(wallet.publicKey!) ||
+        e.freelancer.equals(wallet.publicKey!)
+    );
+    mine.sort((a, b) => b.deadline.toNumber() - a.deadline.toNumber());
+    return mine;
   }, [connection, wallet]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!wallet.publicKey) return;
+    let ignore = false;
+    fetchEscrows()
+      .then((mine) => {
+        if (!ignore) setEscrows(mine);
+      })
+      .catch((err) => {
+        console.error("Failed to load escrows:", err);
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [fetchEscrows, refreshKey, wallet.publicKey]);
 
   const filtered = useMemo(() => {
     if (!wallet.publicKey) return [];
@@ -110,12 +119,12 @@ export default function Dashboard({ go }: { go: (v: View) => void }) {
       <div className="detail-head">
         <div>
           <h2 style={{ margin: "0 0 4px" }}>Your escrows</h2>
-          <p style={{ margin: 0, color: "var(--text-dim)", fontSize: 14 }}>
+          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>
             Deals where you are the client or the freelancer.
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-ghost" onClick={load} disabled={loading}>
+          <button className="btn btn-ghost" onClick={() => { setLoading(true); setRefreshKey((k) => k + 1); }} disabled={loading}>
             {loading ? <span className="spinner" /> : "↻ Refresh"}
           </button>
           <button className="btn btn-primary" onClick={() => go({ name: "create" })}>

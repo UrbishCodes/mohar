@@ -1,4 +1,5 @@
 import { AnchorProvider, Program, BN } from "@coral-xyz/anchor";
+import { Buffer } from "buffer";
 import {
   Connection,
   PublicKey,

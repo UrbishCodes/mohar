@@ -1,12 +1,17 @@
 import type { View } from "../components/TopBar";
+import { logoFor, type Theme } from "../lib/theme";
 
-export default function Landing({ go }: { go: (v: View) => void }) {
+export default function Landing({
+  go,
+  theme,
+}: {
+  go: (v: View) => void;
+  theme: Theme;
+}) {
   return (
     <div className="page">
       <section className="hero">
-        <h1>
-          Mohar <span className="gold">मोहर</span>
-        </h1>
+        <h1>Mohar</h1>
         <p className="tagline">SEALED. SETTLED. PAID.</p>
         <p className="lede">
           Escrow for Nepali freelancers working with international clients.
@@ -25,7 +30,13 @@ export default function Landing({ go }: { go: (v: View) => void }) {
       </section>
 
       <div className="seal-divider">
-        <div className="brand-mark">मो</div>
+        <img
+          src={logoFor(theme.resolved)}
+          alt=""
+          aria-hidden="true"
+          width={72}
+          height={72}
+        />
       </div>
 
       <h2 className="section-title">How it works</h2>
@@ -79,7 +90,7 @@ export default function Landing({ go }: { go: (v: View) => void }) {
       </div>
 
       <div className="seal-divider">
-        <p style={{ color: "var(--text-dim)", fontSize: 14 }}>
+        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
           Mohar is the seal on every deal.
         </p>
       </div>

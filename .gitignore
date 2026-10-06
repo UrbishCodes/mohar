@@ -20,6 +20,8 @@ logs/
 # Env
 .env
 .env.local
+.agents/hooks.json
+.cursor/hooks.json
 
 # GUARDRAIL: plan/design docs live ONLY in the private build repo
 # (UrbishCodes/mohar-build). They must never be committed here.

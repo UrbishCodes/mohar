@@ -11,13 +11,8 @@ import {
   statusName,
   type EscrowAccount,
 } from "../lib/mohar";
-import {
-  StatusPill,
-  Timeline,
-  formatAmount,
-  formatDeadline,
-  shortAddr,
-} from "../components/ui";
+import { StatusPill, Timeline } from "../components/ui";
+import { formatAmount, formatDeadline, shortAddr } from "../lib/format";
 
 export default function EscrowDetail({
   escrowKey,
@@ -34,25 +29,39 @@ export default function EscrowDetail({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ kind: string; text: string } | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [nowSec] = useState(() => Date.now() / 1000);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setNotice(null);
-    try {
-      const program = getProgram(connection, wallet);
-      const acct = await program.account.escrow.fetch(new PublicKey(escrowKey));
-      setEscrow({ publicKey: new PublicKey(escrowKey), ...(acct as object) } as EscrowAccount);
-    } catch (err) {
-      console.error(err);
-      setNotice({ kind: "notice-error", text: "Could not load this escrow. Check the address and cluster." });
-    } finally {
-      setLoading(false);
-    }
+  const fetchEscrow = useCallback(async (): Promise<EscrowAccount> => {
+    const program = getProgram(connection, wallet);
+    const acct = await program.account.escrow.fetch(new PublicKey(escrowKey));
+    return {
+      publicKey: new PublicKey(escrowKey),
+      ...(acct as object),
+    } as EscrowAccount;
   }, [connection, wallet, escrowKey]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    let ignore = false;
+    fetchEscrow()
+      .then((data) => {
+        if (!ignore) setEscrow(data);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!ignore)
+          setNotice({
+            kind: "notice-error",
+            text: "Could not load this escrow. Check the address and cluster.",
+          });
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [fetchEscrow, refreshKey]);
 
   const ensureAta = async (mint: PublicKey, owner: PublicKey): Promise<PublicKey> => {
     return getOrCreateAta(connection, publicKey!, mint, owner, async (tx: Transaction) => {
@@ -69,7 +78,8 @@ export default function EscrowDetail({
       const sig = await fn();
       await connection.confirmTransaction(sig, "confirmed");
       setNotice({ kind: "notice-ok", text: `Confirmed: ${shortAddr(sig)}` });
-      await load();
+      setLoading(true);
+      setRefreshKey((k) => k + 1);
     } catch (err) {
       console.error(err);
       const msg = err instanceof Error ? err.message : String(err);
@@ -107,7 +117,7 @@ export default function EscrowDetail({
   const isClient = !!publicKey && escrow.client.equals(publicKey);
   const isFreelancer = !!publicKey && escrow.freelancer.equals(publicKey);
   const isArbiter = !!publicKey && escrow.arbiter.equals(publicKey);
-  const pastDeadline = Date.now() / 1000 >= escrow.deadline.toNumber();
+  const pastDeadline = nowSec >= escrow.deadline.toNumber();
   const canClaim = isFreelancer && (status === "Funded" || status === "Delivered") && pastDeadline;
   const program = () => getProgram(connection, wallet);
 
@@ -261,14 +271,14 @@ export default function EscrowDetail({
             style={{
               marginLeft: 10,
               fontSize: 13,
-              color: "var(--text-dim)",
+              color: "var(--text-muted)",
               fontWeight: 600,
             }}
           >
             You are the {roleLabel}
           </span>
         </div>
-        <button className="btn btn-ghost" onClick={load} disabled={busy !== null}>
+        <button className="btn btn-ghost" onClick={() => { setLoading(true); setRefreshKey((k) => k + 1); }} disabled={busy !== null}>
           ↻ Refresh
         </button>
       </div>
@@ -290,7 +300,7 @@ export default function EscrowDetail({
           <dd>
             {formatDeadline(escrow.deadline)}
             {pastDeadline && (status === "Funded" || status === "Delivered") && (
-              <span style={{ color: "var(--gold)", marginLeft: 8 }}>· passed</span>
+              <span style={{ color: "var(--warning)", marginLeft: 8 }}>· passed</span>
             )}
           </dd>
           <dt>Seed</dt>

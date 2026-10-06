@@ -127,7 +127,7 @@ export default function CreateEscrow({ go }: { go: (v: View) => void }) {
       <div className="detail-head">
         <div>
           <h2 style={{ margin: "0 0 4px" }}>New escrow</h2>
-          <p style={{ margin: 0, color: "var(--text-dim)", fontSize: 14 }}>
+          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>
             Lock USDC for a freelancer. Sealed until delivery or the deadline.
           </p>
         </div>
