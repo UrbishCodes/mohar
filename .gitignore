@@ -24,8 +24,7 @@ logs/
 .cursor/hooks.json
 
 # GUARDRAIL: plan/design docs live ONLY in the private build repo
-# (UrbishCodes/mohar-build). They must never be committed here.
-# The sync script scripts/sync-to-public.ps1 excludes them automatically.
+
 PRD.md
 ARCHITECTURE.md
 PRODUCT.md

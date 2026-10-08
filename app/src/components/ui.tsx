@@ -14,7 +14,7 @@ const FLOW: { key: EscrowStatusName; label: string }[] = [
 
 export function Timeline({ status }: { status: EscrowAccount["status"] }) {
   const name = statusName(status);
-  const terminal = name === "Refunded" || name === "Resolved";
+  const terminal = name === "Released" || name === "Refunded" || name === "Resolved";
   const disputed = name === "Disputed";
 
   let steps = FLOW.map((s) => ({ ...s, state: "" as string }));

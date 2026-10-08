@@ -1,5 +1,5 @@
 import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { WalletButton } from "./WalletButton";
 import { CLUSTERS, setCluster, type ClusterName } from "../lib/config";
 import { logoFor, type Theme, type ThemeMode } from "../lib/theme";
 
@@ -115,7 +115,7 @@ export function TopBar({
             </button>
           ))}
         </div>
-        <WalletMultiButton />
+        <WalletButton />
       </div>
     </header>
   );

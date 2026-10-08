@@ -42,7 +42,10 @@ export interface EscrowAccount {
 
 export function statusName(s: EscrowAccount["status"]): EscrowStatusName {
   if (typeof s === "string") return s as EscrowStatusName;
-  return Object.keys(s)[0] as EscrowStatusName;
+  // Anchor IDLs serialize enum variants lowercase ("funded"); normalize to
+  // the capitalized form the UI compares against.
+  const key = Object.keys(s)[0] ?? "";
+  return (key.charAt(0).toUpperCase() + key.slice(1)) as EscrowStatusName;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

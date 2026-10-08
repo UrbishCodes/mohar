@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ConnectionProvider,
   WalletProvider,
@@ -26,9 +26,23 @@ export default function App() {
     []
   );
 
+  /**
+   * Never let the wallet-adapter's default error handler run: on
+   * WalletNotReadyError it calls window.open(adapter.url, '_blank'),
+   * which opens a surprise wallet-website tab. Log instead; the app's
+   * own state machine already resets to a clean idle state.
+   */
+  const handleWalletError = useCallback((error: Error) => {
+    console.error("[mohar] wallet error:", error);
+  }, []);
+
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
+      <WalletProvider
+        wallets={wallets}
+        autoConnect
+        onError={handleWalletError}
+      >
         <ConnectWalletModalProvider>
           <TopBar
             view={view}
