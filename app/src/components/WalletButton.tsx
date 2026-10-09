@@ -38,7 +38,8 @@ export function WalletButton() {
 
   // A state change (connect/disconnect/switch) invalidates the open menu.
   useEffect(() => {
-    // oxlint-disable-next-line react/set-state-in-effect`r`n  setMenuOpen(false);
+    // oxlint-disable-next-line react/set-state-in-effect
+    setMenuOpen(false);
   }, [connected, wallet]);
 
   useEffect(() => {

@@ -303,8 +303,10 @@ function ConnectWalletModal() {
           // Superseded (user changed/cancelled mid-flight): release the
           // session this attempt created so nothing lingers connected.
           adapter.disconnect().catch(() => {});
+          return;
         }
         if (liveAttempt.current?.id === id) liveAttempt.current = null;
+        window.setTimeout(() => window.location.reload(), 300);
       })
       .catch(() => {
         if (attemptRef.current === id) {

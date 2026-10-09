@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ConnectionProvider,
   WalletProvider,
@@ -17,7 +17,23 @@ import EscrowDetail from "./pages/EscrowDetail";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 export default function App() {
-  const [view, setView] = useState<View>({ name: "landing" });
+  const [view, setView] = useState<View>(() => {
+    try {
+      const saved = sessionStorage.getItem("mohar:view");
+      if (saved) return JSON.parse(saved) as View;
+    } catch {
+      /* ignore */
+    }
+    return { name: "landing" };
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("mohar:view", JSON.stringify(view));
+    } catch {
+      /* ignore */
+    }
+  }, [view]);
   const [cluster, setClusterState] = useState<ClusterName>(() => getCluster());
   const theme = useTheme();
   const endpoint = CLUSTERS[cluster].endpoint;
