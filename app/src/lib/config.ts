@@ -1,16 +1,15 @@
-import { clusterApiUrl } from "@solana/web3.js";
-
-export type ClusterName = "devnet" | "localnet";
+export type ClusterName = "devnet";
 
 export const CLUSTERS: Record<ClusterName, { label: string; endpoint: string }> = {
-  devnet: { label: "Devnet", endpoint: clusterApiUrl("devnet") },
-  localnet: { label: "Localnet", endpoint: "http://127.0.0.1:8899" },
+  devnet: {
+    label: "Devnet",
+    endpoint: "https://devnet.helius-rpc.com/?api-key=a59040a6-3a77-4f44-b440-3bb05ca599ba",
+  },
 };
 
 export const PROGRAM_ID = "Ey5QSYnyD4GokFS3H8hiwMyrRVZEbzXnjaRPY6DdAtMQ";
 
-// Circle's devnet USDC. Override here (or via localStorage "mohar:mint")
-// when testing with a different mint.
+// Circle's devnet USDC. Override via localStorage "mohar:mint" if needed.
 export const DEFAULT_USDC_MINT = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 
 export function getMintAddress(): string {
@@ -24,19 +23,9 @@ export function getMintAddress(): string {
 }
 
 export function getCluster(): ClusterName {
-  try {
-    const saved = localStorage.getItem("mohar:cluster");
-    if (saved === "localnet" || saved === "devnet") return saved;
-  } catch {
-    /* ignore */
-  }
   return "devnet";
 }
 
-export function setCluster(c: ClusterName) {
-  try {
-    localStorage.setItem("mohar:cluster", c);
-  } catch {
-    /* ignore */
-  }
+export function setCluster(_c: ClusterName) {
+  /* only one cluster: no-op */
 }

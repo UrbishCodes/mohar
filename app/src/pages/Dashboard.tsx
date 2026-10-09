@@ -16,6 +16,12 @@ export function EscrowCard({
   onOpen: () => void;
 }) {
   const name = statusName(escrow.status);
+  const counterparty =
+    role === "Client"
+      ? shortAddr(escrow.freelancer.toBase58())
+      : role === "Freelancer"
+      ? shortAddr(escrow.client.toBase58())
+      : `${shortAddr(escrow.client.toBase58())} - ${shortAddr(escrow.freelancer.toBase58())}`;
   return (
     <div className="card escrow-card" onClick={onOpen}>
       <div className="row">
@@ -28,10 +34,10 @@ export function EscrowCard({
         <span className="value">{role}</span>
       </div>
       <div className="row">
-        <span className="label">Counterparty</span>
-        <span className="addr value">
-          {shortAddr((role === "Client" ? escrow.freelancer : escrow.client).toBase58())}
+        <span className="label">
+          {role === "Arbiter" ? "Parties" : "Counterparty"}
         </span>
+        <span className="addr value">{counterparty}</span>
       </div>
       <div className="row">
         <span className="label">Deadline</span>
@@ -50,7 +56,9 @@ export default function Dashboard({ go }: { go: (v: View) => void }) {
   const wallet = useWallet();
   const [escrows, setEscrows] = useState<EscrowAccount[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"all" | "client" | "freelancer">("all");
+  const [tab, setTab] = useState<"all" | "client" | "freelancer" | "arbiter">(
+    "all"
+  );
   const [refreshKey, setRefreshKey] = useState(0);
 
   const fetchEscrows = useCallback(async (): Promise<EscrowAccount[]> => {
@@ -63,10 +71,12 @@ export default function Dashboard({ go }: { go: (v: View) => void }) {
       (e: { publicKey: PublicKey; account: object }) =>
         ({ publicKey: e.publicKey, ...e.account } as EscrowAccount)
     );
+    const me = wallet.publicKey;
     const mine = normalized.filter(
       (e) =>
-        e.client.equals(wallet.publicKey!) ||
-        e.freelancer.equals(wallet.publicKey!)
+        e.client.equals(me) ||
+        e.freelancer.equals(me) ||
+        e.arbiter.equals(me)
     );
     mine.sort((a, b) => b.deadline.toNumber() - a.deadline.toNumber());
     return mine;
@@ -92,15 +102,21 @@ export default function Dashboard({ go }: { go: (v: View) => void }) {
 
   const filtered = useMemo(() => {
     if (!wallet.publicKey) return [];
-    if (tab === "client")
-      return escrows.filter((e) => e.client.equals(wallet.publicKey!));
+    const me = wallet.publicKey;
+    if (tab === "client") return escrows.filter((e) => e.client.equals(me));
     if (tab === "freelancer")
-      return escrows.filter((e) => e.freelancer.equals(wallet.publicKey!));
+      return escrows.filter((e) => e.freelancer.equals(me));
+    if (tab === "arbiter") return escrows.filter((e) => e.arbiter.equals(me));
     return escrows;
   }, [escrows, tab, wallet.publicKey]);
 
-  const roleOf = (e: EscrowAccount) =>
-    e.client.equals(wallet.publicKey!) ? "Client" : "Freelancer";
+  const roleOf = (e: EscrowAccount) => {
+    const me = wallet.publicKey!;
+    if (e.client.equals(me)) return "Client";
+    if (e.freelancer.equals(me)) return "Freelancer";
+    if (e.arbiter.equals(me)) return "Arbiter";
+    return "—";
+  };
 
   if (!wallet.connected) {
     return (
@@ -114,33 +130,53 @@ export default function Dashboard({ go }: { go: (v: View) => void }) {
     );
   }
 
+  const tabs: {
+    key: "all" | "client" | "freelancer" | "arbiter";
+    label: string;
+  }[] = [
+    { key: "all", label: "All" },
+    { key: "client", label: "As client" },
+    { key: "freelancer", label: "As freelancer" },
+    { key: "arbiter", label: "As arbiter" },
+  ];
+
   return (
     <div className="page">
       <div className="detail-head">
         <div>
           <h2 style={{ margin: "0 0 4px" }}>Your escrows</h2>
           <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>
-            Deals where you are the client or the freelancer.
+            Deals where you are the client, the freelancer, or the arbiter.
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-ghost" onClick={() => { setLoading(true); setRefreshKey((k) => k + 1); }} disabled={loading}>
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              setLoading(true);
+              setRefreshKey((k) => k + 1);
+            }}
+            disabled={loading}
+          >
             {loading ? <span className="spinner" /> : "↻ Refresh"}
           </button>
-          <button className="btn btn-primary" onClick={() => go({ name: "create" })}>
+          <button
+            className="btn btn-primary"
+            onClick={() => go({ name: "create" })}
+          >
             + New escrow
           </button>
         </div>
       </div>
 
       <div className="tabs">
-        {(["all", "client", "freelancer"] as const).map((t) => (
+        {tabs.map((t) => (
           <button
-            key={t}
-            className={`tab ${tab === t ? "active" : ""}`}
-            onClick={() => setTab(t)}
+            key={t.key}
+            className={`tab ${tab === t.key ? "active" : ""}`}
+            onClick={() => setTab(t.key)}
           >
-            {t === "all" ? "All" : t === "client" ? "As client" : "As freelancer"}
+            {t.label}
           </button>
         ))}
       </div>
@@ -154,7 +190,10 @@ export default function Dashboard({ go }: { go: (v: View) => void }) {
           <div className="big">📭</div>
           <h3>No escrows yet</h3>
           <p>Start your first sealed deal.</p>
-          <button className="btn btn-primary" onClick={() => go({ name: "create" })}>
+          <button
+            className="btn btn-primary"
+            onClick={() => go({ name: "create" })}
+          >
             Create escrow
           </button>
         </div>
@@ -165,7 +204,9 @@ export default function Dashboard({ go }: { go: (v: View) => void }) {
               key={e.publicKey.toBase58()}
               escrow={e}
               role={roleOf(e)}
-              onOpen={() => go({ name: "detail", escrow: e.publicKey.toBase58() })}
+              onOpen={() =>
+                go({ name: "detail", escrow: e.publicKey.toBase58() })
+              }
             />
           ))}
         </div>
