@@ -4,7 +4,8 @@ import {
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { ConnectWalletModalProvider } from "./components/ConnectWalletModal";
-import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
+import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
+import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
 import { CLUSTERS, getCluster, type ClusterName } from "./lib/config";
 import { useTheme } from "./lib/theme";
 import { TopBar, type View } from "./components/TopBar";
