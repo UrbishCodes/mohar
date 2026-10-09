@@ -363,7 +363,8 @@
           "signer": true,
           "relations": [
             "escrow"
-          ]
+          ],
+          "writable": true
         },
         {
           "name": "vault",
@@ -448,7 +449,8 @@
           "signer": true,
           "relations": [
             "escrow"
-          ]
+          ],
+          "writable": true
         },
         {
           "name": "vault",
