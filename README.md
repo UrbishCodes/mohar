@@ -6,6 +6,8 @@ On-chain escrow for freelancers working with international clients. The client l
 
 **Live on Solana devnet:** [Ey5QSYnyD4GokFS3H8hiwMyrRVZEbzXnjaRPY6DdAtMQ](https://explorer.solana.com/address/Ey5QSYnyD4GokFS3H8hiwMyrRVZEbzXnjaRPY6DdAtMQ?cluster=devnet)
 
+**Live app:** [mohar-beta.vercel.app](https://mohar-beta.vercel.app)
+
 ---
 
 ## 😤 The problem
@@ -67,7 +69,7 @@ Every transition is a program instruction. Every state change is on-chain. There
 
 ## 🎬 Try it (for judges and anyone else)
 
-You do not need to install anything. The frontend is a web app that runs against the live devnet program.
+**Open [mohar-beta.vercel.app](https://mohar-beta.vercel.app) in your browser.** No install, no clone, no build. The frontend is already running and talks to the live devnet program.
 
 **What you need**
 
