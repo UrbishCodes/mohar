@@ -166,7 +166,6 @@ function ConnectWalletModal() {
     select,
     wallet,
     connected,
-    disconnect,
   } = useWallet();
   const [expanded, setExpanded] = useState(false);
   const [guidanceFor, setGuidanceFor] = useState<string | null>(null);
@@ -254,23 +253,12 @@ function ConnectWalletModal() {
       // Abandon any in-flight attempt before starting a new one.
       attemptRef.current += 1;
       liveAttempt.current = null;
-      if (wallet) {
-        // Safe switch: disconnect the current adapter (connected or still
-        // connecting) and WAIT for it to settle. This guarantees its async
-        // 'disconnect' event is processed before the new selection, so it
-        // can never wipe it.
-        try {
-          await disconnect();
-        } catch {
-          /* proceed anyway */
-        }
-      }
       const id = attemptRef.current;
       connectRequested.current = { name, id };
       select(name);
       close();
     },
-    [wallets, wallet, disconnect, select, close]
+    [wallets, wallet, select, close]
   );
 
   // Fires the connection after a wallet is chosen. Runs even while the
@@ -306,6 +294,9 @@ function ConnectWalletModal() {
           return;
         }
         if (liveAttempt.current?.id === id) liveAttempt.current = null;
+        // Persist wallet selection synchronously before reload; the
+        // wallet-adapter internal sync can lag behind the reload in this flow.
+        try { localStorage.setItem("walletName", JSON.stringify(name)); } catch { /* ignore */ }
         window.setTimeout(() => window.location.reload(), 300);
       })
       .catch(() => {
@@ -343,7 +334,6 @@ function ConnectWalletModal() {
   useEffect(() => {
     if (!visible) return;
     prevFocus.current = document.activeElement as HTMLElement | null;
-    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     const focusTimer = window.setTimeout(() => {
@@ -378,7 +368,7 @@ function ConnectWalletModal() {
 
     return () => {
       window.clearTimeout(focusTimer);
-      document.body.style.overflow = prevOverflow;
+      document.body.style.overflow = "";
       window.removeEventListener("keydown", onKeyDown);
       prevFocus.current?.focus?.();
     };
