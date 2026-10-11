@@ -98,3 +98,26 @@ export async function getOrCreateAta(
 }
 
 export { SystemProgram, TOKEN_PROGRAM_ID };
+
+/**
+ * Retry a fetch that may fail transiently because of RPC read-after-write lag.
+ * Only retries on "account not found"-style errors; anything else fails fast.
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  attempts = 6,
+  delayMs = 700
+): Promise<T> {
+  let last: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      last = e;
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/Account does not exist|not found|no data/i.test(msg)) throw e;
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw last;
+}

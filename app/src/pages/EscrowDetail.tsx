@@ -9,6 +9,7 @@ import {
   getOrCreateAta,
   tokenProgramId,
   statusName,
+  withRetry,
   type EscrowAccount,
 } from "../lib/mohar";
 import { StatusPill, Timeline } from "../components/ui";
@@ -34,7 +35,7 @@ export default function EscrowDetail({
 
   const fetchEscrow = useCallback(async (): Promise<EscrowAccount> => {
     const program = getProgram(connection, wallet);
-    const acct = await program.account.escrow.fetch(new PublicKey(escrowKey));
+    const acct = await withRetry(() => program.account.escrow.fetch(new PublicKey(escrowKey)));
     return {
       publicKey: new PublicKey(escrowKey),
       ...(acct as object),
