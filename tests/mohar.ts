@@ -15,6 +15,8 @@ import {
   SystemProgram,
 } from "@solana/web3.js";
 import assert from "assert";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -27,10 +29,14 @@ async function expectFail(promise: Promise<unknown>, label: string) {
   assert.fail(`expected failure: ${label}`);
 }
 
-describe("mohar", () => {
+const idlPath = resolve(process.cwd(), "app", "src", "lib", "mohar-idl.json");
+const idl = JSON.parse(readFileSync(idlPath, "utf-8")) as anchor.Idl;
+const PROGRAM_ID = new PublicKey((idl as any).address);
+
+describe("mohar (devnet, live program)", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
-  const program = anchor.workspace.Mohar as anchor.Program;
+  const program = new anchor.Program(idl, provider);
   const connection = provider.connection;
 
   const client = Keypair.generate();
@@ -114,17 +120,37 @@ describe("mohar", () => {
     return { seed, amount, escrow, vault, from, fromAta };
   }
 
+  async function acceptJob(escrow: PublicKey) {
+    await program.methods
+      .acceptJob()
+      .accounts({ escrow, freelancer: freelancer.publicKey })
+      .signers([freelancer])
+      .rpc();
+  }
+
   before(async () => {
-    // Fund everybody with SOL.
+    const payer = (provider.wallet as anchor.Wallet).payer;
+
+    console.log("---------------------------------------------");
+    console.log(`Program ID  : ${program.programId.toBase58()}`);
+    console.log(`IDL address : ${PROGRAM_ID.toBase58()}`);
+    console.log(`Deploy wallet: ${payer.publicKey.toBase58()}`);
+    const bal = await connection.getBalance(payer.publicKey);
+    console.log(`Deploy balance: ${bal / LAMPORTS_PER_SOL} SOL`);
+    console.log("---------------------------------------------");
+
     for (const kp of [client, freelancer, arbiter, stranger]) {
-      const sig = await connection.requestAirdrop(
-        kp.publicKey,
-        2 * LAMPORTS_PER_SOL
+      const tx = new anchor.web3.Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: payer.publicKey,
+          toPubkey: kp.publicKey,
+          lamports: Math.floor(0.1 * LAMPORTS_PER_SOL),
+        })
       );
-      await connection.confirmTransaction(sig, "confirmed");
+      await provider.sendAndConfirm(tx, [payer]);
+      console.log(`Funded ${kp.publicKey.toBase58()} with 0.5 SOL`);
     }
 
-    const payer = (provider.wallet as anchor.Wallet).payer;
     mint = await createMint(
       connection,
       payer,
@@ -132,6 +158,7 @@ describe("mohar", () => {
       null,
       6
     );
+    console.log(`Mint created: ${mint.toBase58()}`);
 
     clientAta = (
       await getOrCreateAssociatedTokenAccount(
@@ -158,7 +185,6 @@ describe("mohar", () => {
       )
     ).address;
 
-    // Client starts with plenty of test-USDC.
     await mintTo(
       connection,
       payer,
@@ -224,10 +250,27 @@ describe("mohar", () => {
     );
   });
 
+  it("freelancer accepts the job; double-accept fails", async () => {
+    const { escrow } = await makeEscrow({});
+    await acceptJob(escrow);
+
+    let stored: any = await program.account.escrow.fetch(escrow);
+    assert.deepStrictEqual(stored.status, { inProgress: {} });
+
+    await expectFail(
+      program.methods
+        .acceptJob()
+        .accounts({ escrow, freelancer: freelancer.publicKey })
+        .signers([freelancer])
+        .rpc(),
+      "double accept_job"
+    );
+  });
+
   it("freelancer marks delivered; a stranger cannot", async () => {
     const { escrow } = await makeEscrow({});
+    await acceptJob(escrow);
 
-    // Stranger tries first — has_one = freelancer must stop them.
     await expectFail(
       program.methods
         .markDelivered()
@@ -249,6 +292,7 @@ describe("mohar", () => {
 
   it("client releases after delivery; vault closes and double-release fails", async () => {
     const { amount, escrow, vault } = await makeEscrow({});
+    await acceptJob(escrow);
     await program.methods
       .markDelivered()
       .accounts({ escrow, freelancer: freelancer.publicKey })
@@ -281,7 +325,6 @@ describe("mohar", () => {
       "vault closed, rent reclaimed"
     );
 
-    // Second release must fail.
     await expectFail(
       program.methods
         .release()
@@ -318,13 +361,13 @@ describe("mohar", () => {
 
   it("rejects a payout to an ATA the freelancer does not own", async () => {
     const { escrow, vault } = await makeEscrow({});
+    await acceptJob(escrow);
     await program.methods
       .markDelivered()
       .accounts({ escrow, freelancer: freelancer.publicKey })
       .signers([freelancer])
       .rpc();
 
-    // strangerAta has the right mint but the wrong owner.
     await expectFail(
       program.methods
         .release()
@@ -366,10 +409,61 @@ describe("mohar", () => {
     assert.deepStrictEqual(stored.status, { refunded: {} });
   });
 
+  it("client cannot refund after the freelancer accepts", async () => {
+    const { escrow, vault, fromAta } = await makeEscrow({});
+    await acceptJob(escrow);
+
+    await expectFail(
+      program.methods
+        .refund()
+        .accounts({
+          escrow,
+          client: client.publicKey,
+          vault,
+          clientAta: fromAta,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([client])
+        .rpc(),
+      "refund after accept"
+    );
+
+    const stored: any = await program.account.escrow.fetch(escrow);
+    assert.deepStrictEqual(stored.status, { inProgress: {} });
+  });
+
+  it("client reclaims after the deadline when the job was never accepted", async () => {
+    const { amount, escrow, vault, fromAta } = await makeEscrow({
+      deadlineSecs: 3,
+    });
+    const before = await tokenBalance(fromAta);
+    await sleep(4500);
+
+    await program.methods
+      .reclaimAfterDeadline()
+      .accounts({
+        escrow,
+        client: client.publicKey,
+        vault,
+        clientAta: fromAta,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([client])
+      .rpc();
+
+    assert.strictEqual(
+      await tokenBalance(fromAta),
+      before + BigInt(amount.toString()),
+      "client reclaimed the never-accepted escrow"
+    );
+    const stored: any = await program.account.escrow.fetch(escrow);
+    assert.deepStrictEqual(stored.status, { refunded: {} });
+  });
+
   it("deadline claim fails early, then pays the freelancer after expiry", async () => {
-    // Too early: deadline an hour out.
     {
       const { escrow, vault } = await makeEscrow({ deadlineSecs: 3600 });
+      await acceptJob(escrow);
       await expectFail(
         program.methods
           .claimAfterDeadline()
@@ -387,8 +481,8 @@ describe("mohar", () => {
       );
     }
 
-    // After expiry: 3-second deadline, then wait it out.
     const { amount, escrow, vault } = await makeEscrow({ deadlineSecs: 3 });
+    await acceptJob(escrow);
     await sleep(4500);
 
     const before = await tokenBalance(freelancerAta);
@@ -421,7 +515,6 @@ describe("mohar", () => {
       client.publicKey
     );
 
-    // Stranger cannot raise a dispute on someone else's escrow.
     await expectFail(
       program.methods
         .raiseDispute()
@@ -439,7 +532,6 @@ describe("mohar", () => {
     let stored: any = await program.account.escrow.fetch(escrow);
     assert.deepStrictEqual(stored.status, { disputed: {} });
 
-    // Non-arbiter cannot resolve.
     await expectFail(
       program.methods
         .resolveDispute(true)
@@ -521,6 +613,7 @@ describe("mohar", () => {
 
   it("cannot dispute an already-released escrow", async () => {
     const { escrow, vault } = await makeEscrow({});
+    await acceptJob(escrow);
     await program.methods
       .markDelivered()
       .accounts({ escrow, freelancer: freelancer.publicKey })

@@ -32,14 +32,18 @@ const D_REFUND: [u8; 8] = [2, 96, 183, 251, 63, 208, 46, 46];
 const D_CLAIM: [u8; 8] = [55, 47, 158, 12, 61, 132, 211, 150];
 const D_DISPUTE: [u8; 8] = [41, 243, 1, 51, 150, 95, 246, 73];
 const D_RESOLVE: [u8; 8] = [231, 6, 202, 6, 96, 103, 12, 230];
+const D_ACCEPT: [u8; 8] = [43, 201, 124, 1, 19, 189, 96, 10];
+const D_RECLAIM: [u8; 8] = [142, 62, 225, 177, 247, 252, 89, 223];
 
-// EscrowStatus discriminants (must match the program's enum order)
+// EscrowStatus discriminants (must match the program's enum order;
+// InProgress was appended last so existing values are unchanged)
 const S_FUNDED: u8 = 0;
 const S_DELIVERED: u8 = 1;
 const S_RELEASED: u8 = 2;
 const S_REFUNDED: u8 = 3;
 const S_DISPUTED: u8 = 4;
 const S_RESOLVED: u8 = 5;
+const S_INPROGRESS: u8 = 6;
 
 // System program: 11111111111111111111111111111111
 const SYSTEM_PID: Address = Address::new_from_array([0u8; 32]);
@@ -345,6 +349,30 @@ fn ix_deliver(escrow: &Address, signer: &Address) -> Instruction {
     }
 }
 
+fn ix_accept(escrow: &Address, signer: &Address) -> Instruction {
+    Instruction {
+        program_id: MOHAR_ID,
+        accounts: vec![am(*escrow, true, false), am(*signer, false, true)],
+        data: D_ACCEPT.to_vec(),
+    }
+}
+
+/// Freelancer accepts, then marks delivered: the standard path to InProgress
+/// -> Delivered used by most tests.
+fn accept_and_deliver(env: &mut Env, escrow: &Address) {
+    send(
+        &mut env.svm,
+        &[ix_accept(escrow, &env.freelancer.pubkey())],
+        &[&env.freelancer],
+    );
+    assert_eq!(escrow_status(&env.svm, escrow), S_INPROGRESS);
+    send(
+        &mut env.svm,
+        &[ix_deliver(escrow, &env.freelancer.pubkey())],
+        &[&env.freelancer],
+    );
+}
+
 fn ix_release(env: &Env, escrow: &Address, vault: &Address, dest_ata: &Address) -> Instruction {
     Instruction {
         program_id: MOHAR_ID,
@@ -400,6 +428,20 @@ fn ix_dispute(escrow: &Address, authority: &Address) -> Instruction {
         program_id: MOHAR_ID,
         accounts: vec![am(*escrow, true, false), am(*authority, false, true)],
         data: D_DISPUTE.to_vec(),
+    }
+}
+
+fn ix_reclaim(env: &Env, escrow: &Address, vault: &Address) -> Instruction {
+    Instruction {
+        program_id: MOHAR_ID,
+        accounts: vec![
+            am(*escrow, true, false),
+            am(env.client.pubkey(), false, true),
+            am(*vault, true, false),
+            am(env.client_ata.pubkey(), true, false),
+            am(token_pid(), false, false),
+        ],
+        data: D_RECLAIM.to_vec(),
     }
 }
 
@@ -468,12 +510,8 @@ fn deliver_and_release_happy_path() {
     let amount = 2_500_000u64;
     let (escrow, vault) = create_escrow(&mut env, 10, amount, START_TS + 3600);
 
-    // Freelancer marks delivered.
-    send(
-        &mut env.svm,
-        &[ix_deliver(&escrow, &env.freelancer.pubkey())],
-        &[&env.freelancer],
-    );
+    // Freelancer accepts, then marks delivered.
+    accept_and_deliver(&mut env, &escrow);
     assert_eq!(escrow_status(&env.svm, &escrow), S_DELIVERED);
 
     // Client releases.
@@ -492,17 +530,15 @@ fn deliver_and_release_happy_path() {
 fn reject_double_release() {
     let mut env = setup();
     let (escrow, vault) = create_escrow(&mut env, 11, 1_000_000, START_TS + 3600);
-    send(
-        &mut env.svm,
-        &[ix_deliver(&escrow, &env.freelancer.pubkey())],
-        &[&env.freelancer],
-    );
+    accept_and_deliver(&mut env, &escrow);
     let freelancer_ata = env.freelancer_ata.pubkey();
     let ix = ix_release(&env, &escrow, &vault, &freelancer_ata);
     send(&mut env.svm, &[ix.clone()], &[&env.client]);
 
     // The vault was closed by the first release, so a second release cannot
     // even load its accounts — the key point is no double-spend happens.
+    // (Expire the blockhash so the retry is distinct, not AlreadyProcessed.)
+    env.svm.expire_blockhash();
     let balance_before = token_balance(&env.svm, &freelancer_ata);
     let _logs = send_expect_err(&mut env.svm, &[ix], &[&env.client]);
     assert_eq!(escrow_status(&env.svm, &escrow), S_RELEASED);
@@ -523,6 +559,13 @@ fn reject_release_before_delivery() {
 fn reject_unauthorized_delivery() {
     let mut env = setup();
     let (escrow, _) = create_escrow(&mut env, 13, 1_000_000, START_TS + 3600);
+    // Freelancer accepts first so the stranger's delivery attempt reaches the
+    // has_one check instead of failing on status.
+    send(
+        &mut env.svm,
+        &[ix_accept(&escrow, &env.freelancer.pubkey())],
+        &[&env.freelancer],
+    );
     // A stranger tries to mark the work delivered.
     let ix = ix_deliver(&escrow, &env.stranger.pubkey());
     let logs = send_expect_err(&mut env.svm, &[ix], &[&env.stranger]);
@@ -537,11 +580,7 @@ fn reject_unauthorized_delivery() {
 fn reject_wrong_owner_payout_destination() {
     let mut env = setup();
     let (escrow, vault) = create_escrow(&mut env, 14, 1_000_000, START_TS + 3600);
-    send(
-        &mut env.svm,
-        &[ix_deliver(&escrow, &env.freelancer.pubkey())],
-        &[&env.freelancer],
-    );
+    accept_and_deliver(&mut env, &escrow);
     // Attacker passes their own token account as the freelancer payout.
     let stranger_ata = env.stranger_ata.pubkey();
     let ix = ix_release(&env, &escrow, &vault, &stranger_ata);
@@ -576,11 +615,7 @@ fn claim_after_deadline() {
     let mut env = setup();
     let amount = 1_000_000u64;
     let (escrow, vault) = create_escrow(&mut env, 16, amount, START_TS + 100);
-    send(
-        &mut env.svm,
-        &[ix_deliver(&escrow, &env.freelancer.pubkey())],
-        &[&env.freelancer],
-    );
+    accept_and_deliver(&mut env, &escrow);
 
     // Client ghosts; time passes.
     set_time(&mut env.svm, START_TS + 200);
@@ -597,11 +632,7 @@ fn claim_after_deadline() {
 fn reject_early_claim() {
     let mut env = setup();
     let (escrow, vault) = create_escrow(&mut env, 17, 1_000_000, START_TS + 3600);
-    send(
-        &mut env.svm,
-        &[ix_deliver(&escrow, &env.freelancer.pubkey())],
-        &[&env.freelancer],
-    );
+    accept_and_deliver(&mut env, &escrow);
     let client = env.client.pubkey();
     let freelancer_ata = env.freelancer_ata.pubkey();
     let ix = ix_claim(&env, &escrow, &vault, &client, &freelancer_ata);
@@ -613,6 +644,12 @@ fn reject_early_claim() {
 fn reject_claim_with_wrong_rent_recipient() {
     let mut env = setup();
     let (escrow, vault) = create_escrow(&mut env, 18, 1_000_000, START_TS + 100);
+    // Accept first so the claim reaches the rent-recipient check.
+    send(
+        &mut env.svm,
+        &[ix_accept(&escrow, &env.freelancer.pubkey())],
+        &[&env.freelancer],
+    );
     set_time(&mut env.svm, START_TS + 200);
     // Attacker tries to redirect the reclaimed vault rent to themselves.
     let stranger = env.stranger.pubkey();
@@ -682,15 +719,141 @@ fn dispute_resolve_to_client() {
 fn reject_dispute_after_release() {
     let mut env = setup();
     let (escrow, vault) = create_escrow(&mut env, 22, 1_000_000, START_TS + 3600);
-    send(
-        &mut env.svm,
-        &[ix_deliver(&escrow, &env.freelancer.pubkey())],
-        &[&env.freelancer],
-    );
+    accept_and_deliver(&mut env, &escrow);
     let freelancer_ata = env.freelancer_ata.pubkey();
     let pay_ix = ix_release(&env, &escrow, &vault, &freelancer_ata);
     send(&mut env.svm, &[pay_ix], &[&env.client]);
     let ix = ix_dispute(&escrow, &env.client.pubkey());
     let logs = send_expect_err(&mut env.svm, &[ix], &[&env.client]);
     assert_custom_err(&logs, E_INVALID_STATUS);
+}
+
+#[test]
+fn accept_job_happy_path() {
+    let mut env = setup();
+    let (escrow, _) = create_escrow(&mut env, 23, 1_000_000, START_TS + 3600);
+    send(
+        &mut env.svm,
+        &[ix_accept(&escrow, &env.freelancer.pubkey())],
+        &[&env.freelancer],
+    );
+    assert_eq!(escrow_status(&env.svm, &escrow), S_INPROGRESS);
+}
+
+#[test]
+fn reject_double_accept() {
+    let mut env = setup();
+    let (escrow, _) = create_escrow(&mut env, 24, 1_000_000, START_TS + 3600);
+    send(
+        &mut env.svm,
+        &[ix_accept(&escrow, &env.freelancer.pubkey())],
+        &[&env.freelancer],
+    );
+    // Expire the blockhash so the retry is a distinct transaction instead of
+    // hitting LiteSVM's duplicate-signature cache (AlreadyProcessed).
+    env.svm.expire_blockhash();
+    let ix = ix_accept(&escrow, &env.freelancer.pubkey());
+    let logs = send_expect_err(&mut env.svm, &[ix], &[&env.freelancer]);
+    assert_custom_err(&logs, E_INVALID_STATUS);
+    assert_eq!(escrow_status(&env.svm, &escrow), S_INPROGRESS);
+}
+
+#[test]
+fn reject_unauthorized_accept() {
+    let mut env = setup();
+    let (escrow, _) = create_escrow(&mut env, 25, 1_000_000, START_TS + 3600);
+    // A stranger tries to accept the job.
+    let ix = ix_accept(&escrow, &env.stranger.pubkey());
+    let logs = send_expect_err(&mut env.svm, &[ix], &[&env.stranger]);
+    assert!(
+        logs.iter().any(|l| l.contains("Error Number: 2001")),
+        "expected has_one (2001) failure in logs:\n{}",
+        logs.join("\n")
+    );
+    assert_eq!(escrow_status(&env.svm, &escrow), S_FUNDED);
+}
+
+#[test]
+fn reject_deliver_before_accept() {
+    let mut env = setup();
+    let (escrow, _) = create_escrow(&mut env, 26, 1_000_000, START_TS + 3600);
+    let ix = ix_deliver(&escrow, &env.freelancer.pubkey());
+    let logs = send_expect_err(&mut env.svm, &[ix], &[&env.freelancer]);
+    assert_custom_err(&logs, E_INVALID_STATUS);
+    assert_eq!(escrow_status(&env.svm, &escrow), S_FUNDED);
+}
+
+#[test]
+fn reject_refund_after_accept() {
+    let mut env = setup();
+    let (escrow, vault) = create_escrow(&mut env, 27, 1_000_000, START_TS + 3600);
+    // Freelancer accepts: the client can no longer cancel unilaterally.
+    send(
+        &mut env.svm,
+        &[ix_accept(&escrow, &env.freelancer.pubkey())],
+        &[&env.freelancer],
+    );
+    let ix = ix_refund(&env, &escrow, &vault);
+    let logs = send_expect_err(&mut env.svm, &[ix], &[&env.client]);
+    assert_custom_err(&logs, E_INVALID_STATUS);
+    // Funds stay locked.
+    assert_eq!(escrow_status(&env.svm, &escrow), S_INPROGRESS);
+    assert_eq!(token_balance(&env.svm, &vault), 1_000_000);
+}
+
+#[test]
+fn reclaim_after_deadline_when_never_accepted() {
+    let mut env = setup();
+    let amount = 1_000_000u64;
+    let (escrow, vault) = create_escrow(&mut env, 28, amount, START_TS + 100);
+    // Freelancer never accepts; deadline passes.
+    set_time(&mut env.svm, START_TS + 200);
+    let ix = ix_reclaim(&env, &escrow, &vault);
+    send(&mut env.svm, &[ix], &[&env.client]);
+    assert_eq!(escrow_status(&env.svm, &escrow), S_REFUNDED);
+    assert_eq!(
+        token_balance(&env.svm, &env.client_ata.pubkey()),
+        1_000_000_000
+    );
+    assert!(!account_exists(&env.svm, &vault));
+}
+
+#[test]
+fn reject_reclaim_before_deadline() {
+    let mut env = setup();
+    let (escrow, vault) = create_escrow(&mut env, 29, 1_000_000, START_TS + 3600);
+    let ix = ix_reclaim(&env, &escrow, &vault);
+    let logs = send_expect_err(&mut env.svm, &[ix], &[&env.client]);
+    assert_custom_err(&logs, E_DEADLINE_NOT_REACHED);
+    assert_eq!(escrow_status(&env.svm, &escrow), S_FUNDED);
+}
+
+#[test]
+fn reject_claim_without_accept() {
+    let mut env = setup();
+    let (escrow, vault) = create_escrow(&mut env, 30, 1_000_000, START_TS + 100);
+    // Deadline passes but the job was never accepted: the freelancer must not
+    // be able to claim pay for work that never started.
+    set_time(&mut env.svm, START_TS + 200);
+    let client = env.client.pubkey();
+    let freelancer_ata = env.freelancer_ata.pubkey();
+    let ix = ix_claim(&env, &escrow, &vault, &client, &freelancer_ata);
+    let logs = send_expect_err(&mut env.svm, &[ix], &[&env.freelancer]);
+    assert_custom_err(&logs, E_INVALID_STATUS);
+    assert_eq!(escrow_status(&env.svm, &escrow), S_FUNDED);
+}
+
+#[test]
+fn dispute_from_in_progress() {
+    let mut env = setup();
+    let (escrow, _) = create_escrow(&mut env, 31, 1_000_000, START_TS + 3600);
+    send(
+        &mut env.svm,
+        &[ix_accept(&escrow, &env.freelancer.pubkey())],
+        &[&env.freelancer],
+    );
+    // Either side can still escalate mid-job.
+    let ix = ix_dispute(&escrow, &env.client.pubkey());
+    send(&mut env.svm, &[ix], &[&env.client]);
+    assert_eq!(escrow_status(&env.svm, &escrow), S_DISPUTED);
 }

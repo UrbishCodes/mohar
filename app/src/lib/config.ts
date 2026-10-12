@@ -1,11 +1,14 @@
 export type ClusterName = "devnet";
 
-// Direct Helius endpoint. The API key is exposed in the shipped bundle, but
-// the Helius dashboard restricts this key to requests from the deployed
-// origin (mohar-beta.vercel.app). Abuse from outside that origin is rejected
-// by Helius before it reaches the RPC. Rotate the key post-submission.
-const HELIUS_DEVNET =
-  "https://devnet.helius-rpc.com/?api-key=a59040a6-3a77-4f44-b440-3bb05ca599ba";
+// Helius API key comes from the VITE_HELIUS_API_KEY environment variable
+// (set in Vercel). It is exposed in the shipped bundle by nature of being a
+// client-side RPC key — the Helius dashboard restricts it to requests from
+// the deployed origins, and abuse from outside those origins is rejected by
+// Helius. Rotate the key in the Helius dashboard if it is ever exposed.
+const HELIUS_KEY = import.meta.env.VITE_HELIUS_API_KEY as string | undefined;
+const HELIUS_DEVNET = HELIUS_KEY
+  ? `https://devnet.helius-rpc.com/?api-key=${HELIUS_KEY}`
+  : "https://api.devnet.solana.com"; // fallback: public devnet
 
 // Local dev uses public devnet to avoid the domain restriction blocking
 // localhost. Production uses Helius.

@@ -4,6 +4,7 @@ import { PublicKey, Transaction } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 import { getMint } from "@solana/spl-token";
 import type { View } from "../components/TopBar";
+import { hasAcceptedLegal, markLegalAccepted } from "../lib/legal";
 import {
   getProgram,
   findEscrowPda,
@@ -25,11 +26,16 @@ export default function CreateEscrow({ go }: { go: (v: View) => void }) {
   const [deadline, setDeadline] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState<boolean>(() => hasAcceptedLegal());
 
   const submit = async () => {
     setError(null);
     if (!publicKey) {
       setError("Connect your wallet first.");
+      return;
+    }
+    if (!accepted) {
+      setError("Please accept the Terms of Service and Privacy Policy first.");
       return;
     }
     let freelancerPk: PublicKey;
@@ -50,7 +56,11 @@ export default function CreateEscrow({ go }: { go: (v: View) => void }) {
       setError("Amount must be greater than zero.");
       return;
     }
-    const deadlineTs = Math.floor(new Date(deadline).getTime() / 1000);
+    // Interpret the chosen date as the END of that day in the user's local
+    // timezone, so "tomorrow" always means a full day away, not midnight.
+    const parts = deadline.split("-").map(Number);
+    const endOfDay = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59);
+    const deadlineTs = Math.floor(endOfDay.getTime() / 1000);
     if (!Number.isFinite(deadlineTs) || deadlineTs <= Date.now() / 1000) {
       setError("Deadline must be a date in the future.");
       return;
@@ -175,7 +185,21 @@ export default function CreateEscrow({ go }: { go: (v: View) => void }) {
               onChange={(e) => setDeadline(e.target.value)}
             />
             <div className="hint">
-              If the deadline passes without release, the freelancer can claim the funds.
+              Deadline is the end of the chosen day in your local time. If
+              it passes with no release and no dispute, the freelancer can
+              claim the funds on an accepted job — or you reclaim them if
+              the job was never accepted.
+              {deadline && (() => {
+                const p = deadline.split("-").map(Number);
+                const eod = new Date(p[0], p[1] - 1, p[2], 23, 59, 59);
+                if (Number.isNaN(eod.getTime())) return null;
+                return (
+                  <>
+                    {" "}Exact: {eod.toLocaleString()} local (
+                    {eod.toUTCString().replace(" GMT", " UTC")}).
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -185,6 +209,36 @@ export default function CreateEscrow({ go }: { go: (v: View) => void }) {
             The full amount leaves your wallet now and sits in a program-owned
             vault until release, refund, claim, or dispute resolution.
           </div>
+
+          <label className="accept-row">
+            <input
+              type="checkbox"
+              checked={accepted}
+              onChange={(e) => {
+                setAccepted(e.target.checked);
+                if (e.target.checked) markLegalAccepted();
+              }}
+            />
+            <span>
+              I agree to the{" "}
+              <button
+                type="button"
+                className="link"
+                onClick={() => go({ name: "terms" })}
+              >
+                Terms of Service
+              </button>{" "}
+              and{" "}
+              <button
+                type="button"
+                className="link"
+                onClick={() => go({ name: "privacy" })}
+              >
+                Privacy Policy
+              </button>
+              .
+            </span>
+          </label>
 
           <button className="btn btn-primary" onClick={submit} disabled={busy}>
             {busy ? (

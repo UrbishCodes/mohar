@@ -56,6 +56,7 @@ export default function Dashboard({ go }: { go: (v: View) => void }) {
   const wallet = useWallet();
   const [escrows, setEscrows] = useState<EscrowAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "client" | "freelancer" | "arbiter">(
     "all"
   );
@@ -87,10 +88,17 @@ export default function Dashboard({ go }: { go: (v: View) => void }) {
     let ignore = false;
     fetchEscrows()
       .then((mine) => {
-        if (!ignore) setEscrows(mine);
+        if (!ignore) {
+          setEscrows(mine);
+          setLoadError(null);
+        }
       })
       .catch((err) => {
         console.error("Failed to load escrows:", err);
+        if (!ignore)
+          setLoadError(
+            "Couldn't load your escrows. Check your connection and try again."
+          );
       })
       .finally(() => {
         if (!ignore) setLoading(false);
@@ -184,6 +192,21 @@ export default function Dashboard({ go }: { go: (v: View) => void }) {
       {loading && escrows.length === 0 ? (
         <div className="empty">
           <span className="spinner" /> Loading escrows…
+        </div>
+      ) : loadError ? (
+        <div className="empty">
+          <div className="big">⚠️</div>
+          <h3>Couldn't load escrows</h3>
+          <p>{loadError}</p>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              setLoading(true);
+              setRefreshKey((k) => k + 1);
+            }}
+          >
+            Retry
+          </button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="empty">

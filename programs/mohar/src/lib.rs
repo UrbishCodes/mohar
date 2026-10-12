@@ -55,12 +55,26 @@ pub mod mohar {
         Ok(())
     }
 
+    /// Freelancer accepts the job and starts work. From this point the client
+    /// can no longer cancel unilaterally — funds leave only via release,
+    /// deadline claim, or arbiter resolution.
+    pub fn accept_job(ctx: Context<AcceptJob>) -> Result<()> {
+        let escrow = &mut ctx.accounts.escrow;
+        require!(
+            escrow.status == EscrowStatus::Funded,
+            EscrowError::InvalidStatus
+        );
+        escrow.status = EscrowStatus::InProgress;
+        emit!(JobAccepted { escrow: escrow.key() });
+        Ok(())
+    }
+
     /// Freelancer signals the work is done. Funds stay locked until the
     /// client releases them (or the deadline passes).
     pub fn mark_delivered(ctx: Context<MarkDelivered>) -> Result<()> {
         let escrow = &mut ctx.accounts.escrow;
         require!(
-            escrow.status == EscrowStatus::Funded,
+            escrow.status == EscrowStatus::InProgress,
             EscrowError::InvalidStatus
         );
         escrow.status = EscrowStatus::Delivered;
@@ -91,7 +105,8 @@ pub mod mohar {
         Ok(())
     }
 
-    /// Client cancels before any delivery: full refund to the client.
+    /// Client cancels before the freelancer accepts the job: full refund to
+    /// the client. Once the job is accepted, cancellation needs the arbiter.
     pub fn refund(ctx: Context<Refund>) -> Result<()> {
         require!(
             ctx.accounts.escrow.status == EscrowStatus::Funded,
@@ -113,11 +128,12 @@ pub mod mohar {
         Ok(())
     }
 
-    /// If the client ghosts after delivery, the freelancer can claim the
-    /// funds once the deadline has passed. No more "I'll pay next week".
+    /// If the client ghosts after the freelancer started work, the freelancer
+    /// can claim the funds once the deadline has passed. No more "I'll pay
+    /// next week".
     pub fn claim_after_deadline(ctx: Context<ClaimAfterDeadline>) -> Result<()> {
         require!(
-            ctx.accounts.escrow.status == EscrowStatus::Funded
+            ctx.accounts.escrow.status == EscrowStatus::InProgress
                 || ctx.accounts.escrow.status == EscrowStatus::Delivered,
             EscrowError::InvalidStatus
         );
@@ -142,11 +158,39 @@ pub mod mohar {
         Ok(())
     }
 
+    /// If the freelancer never accepted the job, the client reclaims the funds
+    /// once the deadline has passed. No pay for work that never started.
+    pub fn reclaim_after_deadline(ctx: Context<ReclaimAfterDeadline>) -> Result<()> {
+        require!(
+            ctx.accounts.escrow.status == EscrowStatus::Funded,
+            EscrowError::InvalidStatus
+        );
+        require!(
+            Clock::get()?.unix_timestamp >= ctx.accounts.escrow.deadline,
+            EscrowError::DeadlineNotReached
+        );
+        pay_out(
+            &ctx.accounts.escrow,
+            &ctx.accounts.vault,
+            ctx.accounts.client.to_account_info(),
+            ctx.accounts.client_ata.to_account_info(),
+            &ctx.accounts.token_program,
+        )?;
+        ctx.accounts.escrow.status = EscrowStatus::Refunded;
+        let escrow = &ctx.accounts.escrow;
+        emit!(EscrowRefunded {
+            escrow: escrow.key(),
+            amount: escrow.amount,
+        });
+        Ok(())
+    }
+
     /// Either side can escalate to the arbiter while funds are locked.
     pub fn raise_dispute(ctx: Context<RaiseDispute>) -> Result<()> {
         let escrow = &mut ctx.accounts.escrow;
         require!(
             escrow.status == EscrowStatus::Funded
+                || escrow.status == EscrowStatus::InProgress
                 || escrow.status == EscrowStatus::Delivered,
             EscrowError::InvalidStatus
         );
@@ -286,6 +330,18 @@ pub struct CreateEscrow<'info> {
 }
 
 #[derive(Accounts)]
+pub struct AcceptJob<'info> {
+    #[account(
+        mut,
+        seeds = [b"escrow", escrow.client.as_ref(), &escrow.seed.to_le_bytes()],
+        bump = escrow.bump,
+        has_one = freelancer,
+    )]
+    pub escrow: Account<'info, Escrow>,
+    pub freelancer: Signer<'info>,
+}
+
+#[derive(Accounts)]
 pub struct MarkDelivered<'info> {
     #[account(
         mut,
@@ -389,6 +445,34 @@ pub struct ClaimAfterDeadline<'info> {
 }
 
 #[derive(Accounts)]
+pub struct ReclaimAfterDeadline<'info> {
+    #[account(
+        mut,
+        seeds = [b"escrow", escrow.client.as_ref(), &escrow.seed.to_le_bytes()],
+        bump = escrow.bump,
+        has_one = client,
+    )]
+    pub escrow: Account<'info, Escrow>,
+    pub client: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"vault", escrow.key().as_ref()],
+        bump = escrow.vault_bump,
+    )]
+    pub vault: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        token::mint = escrow.mint,
+        constraint = client_ata.owner == escrow.client @ EscrowError::InvalidDestination,
+    )]
+    pub client_ata: Account<'info, TokenAccount>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
 pub struct RaiseDispute<'info> {
     #[account(
         mut,
@@ -472,6 +556,9 @@ pub enum EscrowStatus {
     Refunded,
     Disputed,
     Resolved,
+    /// Appended last on purpose: borsh serializes variants by index, so
+    /// existing escrow accounts keep their meaning after the upgrade.
+    InProgress,
 }
 
 // ---------------------------------------------------------------------------
@@ -485,6 +572,11 @@ pub struct EscrowCreated {
     pub freelancer: Pubkey,
     pub amount: u64,
     pub deadline: i64,
+}
+
+#[event]
+pub struct JobAccepted {
+    pub escrow: Pubkey,
 }
 
 #[event]

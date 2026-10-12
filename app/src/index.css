@@ -77,6 +77,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Reserve scrollbar space on every view so page content never shifts
+   when the scrollbar appears/disappears between pages. */
+html {
+  scrollbar-gutter: stable;
+}
+
 a {
   color: var(--primary);
   text-decoration: none;
@@ -97,7 +103,15 @@ button {
 }
 
 /* ---------- layout ---------- */
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
 .page {
+  flex: 1;
+  width: 100%;
   max-width: 1120px;
   margin: 0 auto;
   padding: 0 20px 80px;
@@ -191,6 +205,13 @@ button {
   border-color: transparent;
 }
 
+/* TopBar nav: the active page is highlighted, never hidden, so the bar
+   keeps a stable width across views. Background-only change = no layout shift. */
+.topbar-actions .btn-ghost.active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
 /* wallet adapter button overrides */
 .wallet-adapter-button {
   background: var(--surface) !important;
@@ -281,6 +302,37 @@ button {
   margin: 6px 0 0;
   font-size: 14px;
   color: var(--text-muted);
+}
+
+/* ---------- confirm dialog ---------- */
+.mohar-confirm-body {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.mohar-confirm-body code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 6px;
+  word-break: break-all;
+}
+.mohar-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+@media (max-width: 480px) {
+  .mohar-confirm-actions {
+    flex-direction: column-reverse;
+  }
+  .mohar-confirm-actions .btn {
+    width: 100%;
+  }
 }
 
 .mohar-wallet-list {
@@ -654,6 +706,10 @@ button {
 .pill-funded {
   background: var(--info-soft);
   color: var(--info);
+}
+.pill-inprogress {
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 .pill-delivered {
   background: var(--warning-soft);
@@ -1038,4 +1094,98 @@ button {
   .page {
     padding: 0 14px 60px;
   }
+}
+
+/* ---------- footer ---------- */
+.footer {
+  border-top: 1px solid var(--border);
+  margin-top: 48px;
+  padding: 20px 24px 28px;
+}
+.footer-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.footer-brand {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.footer-links {
+  display: flex;
+  gap: 20px;
+}
+
+/* ---------- inline text link (button-styled) ---------- */
+.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary);
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.link:hover {
+  color: var(--text);
+}
+
+/* ---------- legal pages ---------- */
+.legal {
+  max-width: 760px;
+  margin: 0 auto;
+}
+.legal h1 {
+  margin: 16px 0 4px;
+  font-size: 28px;
+}
+.legal-updated {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0 0 24px;
+}
+.legal h2 {
+  margin: 28px 0 8px;
+  font-size: 18px;
+}
+.legal p,
+.legal li {
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.7;
+}
+.legal ul {
+  padding-left: 22px;
+  margin: 8px 0;
+}
+.legal li {
+  margin-bottom: 8px;
+}
+.legal a {
+  color: var(--primary);
+}
+
+/* ---------- terms acceptance checkbox ---------- */
+.accept-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1.5;
+}
+.accept-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
 }

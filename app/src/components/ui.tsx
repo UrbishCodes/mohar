@@ -1,5 +1,39 @@
+import { useState } from "react";
 import { statusName } from "../lib/mohar";
 import type { EscrowAccount, EscrowStatusName } from "../lib/mohar";
+
+const EXPLORER = "https://explorer.solana.com";
+
+/** Address with copy button + Solana explorer link (devnet). */
+export function ExplorerAddr({ addr, kind = "address" }: { addr: string; kind?: "address" | "tx" }) {
+  const [copied, setCopied] = useState(false);
+  const url = `${EXPLORER}/${kind}/${addr}?cluster=devnet`;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(addr);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+  return (
+    <span className="addr-line">
+      <span className="addr">{addr}</span>{" "}
+      <button
+        className="link"
+        onClick={copy}
+        title="Copy full address"
+        aria-label="Copy full address"
+      >
+        {copied ? "Copied ✓" : "Copy"}
+      </button>{" "}
+      <a href={url} target="_blank" rel="noreferrer" className="link">
+        Explorer ↗
+      </a>
+    </span>
+  );
+}
 
 export function StatusPill({ status }: { status: EscrowAccount["status"] }) {
   const name = statusName(status);
@@ -8,6 +42,7 @@ export function StatusPill({ status }: { status: EscrowAccount["status"] }) {
 
 const FLOW: { key: EscrowStatusName; label: string }[] = [
   { key: "Funded", label: "Funded" },
+  { key: "InProgress", label: "In progress" },
   { key: "Delivered", label: "Delivered" },
   { key: "Released", label: "Released" },
 ];

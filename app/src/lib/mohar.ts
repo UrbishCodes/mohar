@@ -20,6 +20,7 @@ export const tokenProgramId = TOKEN_PROGRAM_ID;
 
 export type EscrowStatusName =
   | "Funded"
+  | "InProgress"
   | "Delivered"
   | "Released"
   | "Refunded"

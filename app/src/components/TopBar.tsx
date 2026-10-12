@@ -7,7 +7,11 @@ export type View =
   | { name: "landing" }
   | { name: "dashboard" }
   | { name: "create" }
-  | { name: "detail"; escrow: string };
+  | { name: "detail"; escrow: string }
+  | { name: "privacy" }
+  | { name: "terms" }
+  | { name: "profile" }
+  | { name: "guide" };
 
 function ThemeIcon({ mode }: { mode: ThemeMode }) {
   const common = {
@@ -81,17 +85,27 @@ export function TopBar({
         <div className="brand-name">Mohar</div>
       </div>
       <div className="topbar-actions">
-        {view.name !== "landing" && (
-          <button className="btn btn-ghost" onClick={() => go({ name: "landing" })}>
-            About
-          </button>
-        )}
-        {connected && view.name !== "dashboard" && (
-          <button className="btn btn-ghost" onClick={() => go({ name: "dashboard" })}>
+        <button
+          className={`btn btn-ghost${view.name === "landing" ? " active" : ""}`}
+          onClick={() => go({ name: "landing" })}
+        >
+          About
+        </button>
+        <button
+          className={`btn btn-ghost${view.name === "profile" ? " active" : ""}`}
+          onClick={() => go({ name: "profile" })}
+        >
+          Profile
+        </button>
+        {connected && (
+          <button
+            className={`btn btn-ghost${view.name === "dashboard" ? " active" : ""}`}
+            onClick={() => go({ name: "dashboard" })}
+          >
             Dashboard
           </button>
         )}
-        {connected && view.name !== "create" && (
+        {connected && (
           <button className="btn btn-primary" onClick={() => go({ name: "create" })}>
             + New escrow
           </button>

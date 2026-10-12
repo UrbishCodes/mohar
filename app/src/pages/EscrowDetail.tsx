@@ -12,7 +12,8 @@ import {
   withRetry,
   type EscrowAccount,
 } from "../lib/mohar";
-import { StatusPill, Timeline } from "../components/ui";
+import { StatusPill, Timeline, ExplorerAddr } from "../components/ui";
+import { useConfirm, type ConfirmOptions } from "../components/ConfirmDialog";
 import { formatAmount, formatDeadline, shortAddr } from "../lib/format";
 
 export default function EscrowDetail({
@@ -29,9 +30,10 @@ export default function EscrowDetail({
   const [escrow, setEscrow] = useState<EscrowAccount | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ kind: string; text: string } | null>(null);
+  const [notice, setNotice] = useState<{ kind: string; text: string; sig?: string } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [nowSec] = useState(() => Date.now() / 1000);
+  const confirm = useConfirm();
 
   const fetchEscrow = useCallback(async (): Promise<EscrowAccount> => {
     const program = getProgram(connection, wallet);
@@ -78,7 +80,7 @@ export default function EscrowDetail({
     try {
       const sig = await fn();
       await connection.confirmTransaction(sig, "confirmed");
-      setNotice({ kind: "notice-ok", text: `Confirmed: ${shortAddr(sig)}` });
+      setNotice({ kind: "notice-ok", text: `Confirmed: ${shortAddr(sig)}`, sig });
       setLoading(true);
       setRefreshKey((k) => k + 1);
     } catch (err) {
@@ -106,7 +108,24 @@ export default function EscrowDetail({
   if (!escrow) {
     return (
       <div className="page">
-        {notice && <div className={`notice ${notice.kind}`}>{notice.text}</div>}
+        {notice && (
+          <div className={`notice ${notice.kind}`}>
+            {notice.text}
+            {notice.sig && (
+              <>
+                {" "}
+                <a
+                  href={`https://explorer.solana.com/tx/${notice.sig}?cluster=devnet`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="link"
+                >
+                  View on explorer ↗
+                </a>
+              </>
+            )}
+          </div>
+        )}
         <button className="btn" onClick={() => go({ name: "dashboard" })}>
           ← Back to dashboard
         </button>
@@ -119,20 +138,28 @@ export default function EscrowDetail({
   const isFreelancer = !!publicKey && escrow.freelancer.equals(publicKey);
   const isArbiter = !!publicKey && escrow.arbiter.equals(publicKey);
   const pastDeadline = nowSec >= escrow.deadline.toNumber();
-  const canClaim = isFreelancer && (status === "Funded" || status === "Delivered") && pastDeadline;
+  const canClaim = isFreelancer && (status === "InProgress" || status === "Delivered") && pastDeadline;
+  const canReclaim = isClient && status === "Funded" && pastDeadline;
   const program = () => getProgram(connection, wallet);
 
   const actionBtn = (
     label: string,
     key: string,
     className: string,
-    fn: () => Promise<string>
+    fn: () => Promise<string>,
+    confirmOpts?: ConfirmOptions
   ) => (
     <button
       key={key}
       className={`btn ${className}`}
       disabled={busy !== null || !wallet.connected}
-      onClick={() => run(key, fn)}
+      onClick={async () => {
+        if (confirmOpts) {
+          const ok = await confirm(confirmOpts);
+          if (!ok) return;
+        }
+        run(key, fn);
+      }}
     >
       {busy === key ? (
         <>
@@ -145,15 +172,48 @@ export default function EscrowDetail({
   );
 
   const vaultOf = async () => (await findVaultPda(escrow.publicKey))[0];
+  const amountStr = `${formatAmount(escrow.amount)} USDC`;
+  const freelancerShort = shortAddr(escrow.freelancer.toBase58());
 
   const actions: React.ReactNode[] = [];
   if (status === "Funded" && isFreelancer) {
+    actions.push(
+      actionBtn("Accept job", "accept", "btn-primary", () =>
+        program()
+          .methods.acceptJob()
+          .accounts({ escrow: escrow.publicKey, freelancer: publicKey! })
+          .rpc(),
+        {
+          title: "Accept this job?",
+          message: (
+            <>
+              Accept this job for <strong>{amountStr}</strong>? Once accepted,
+              the client can no longer cancel — funds move only via release,
+              deadline claim, or arbiter decision.
+            </>
+          ),
+          confirmLabel: "Accept job",
+        }
+      )
+    );
+  }
+  if (status === "InProgress" && isFreelancer) {
     actions.push(
       actionBtn("Mark as delivered", "deliver", "btn-primary", () =>
         program()
           .methods.markDelivered()
           .accounts({ escrow: escrow.publicKey, freelancer: publicKey! })
-          .rpc()
+          .rpc(),
+        {
+          title: "Mark as delivered?",
+          message: (
+            <>
+              Mark this job as delivered? The client can then release{" "}
+              <strong>{amountStr}</strong> to you.
+            </>
+          ),
+          confirmLabel: "Mark delivered",
+        }
       )
     );
   }
@@ -172,7 +232,19 @@ export default function EscrowDetail({
             tokenProgram: tokenProgramId,
           })
           .rpc();
-      })
+      },
+        {
+          title: "Refund escrow?",
+          message: (
+            <>
+              Refund <strong>{amountStr}</strong> to yourself and cancel this
+              escrow? This cannot be undone.
+            </>
+          ),
+          confirmLabel: "Refund",
+          danger: true,
+        }
+      )
     );
   }
   if (status === "Delivered" && isClient) {
@@ -190,7 +262,19 @@ export default function EscrowDetail({
             tokenProgram: tokenProgramId,
           })
           .rpc();
-      })
+      },
+        {
+          title: "Release payment?",
+          message: (
+            <>
+              Release <strong>{amountStr}</strong> to the freelancer (
+              <code>{freelancerShort}</code>)? This cannot be undone.
+            </>
+          ),
+          confirmLabel: "Release payment",
+          danger: true,
+        }
+      )
     );
   }
   if (canClaim) {
@@ -209,11 +293,53 @@ export default function EscrowDetail({
             tokenProgram: tokenProgramId,
           })
           .rpc();
-      })
+      },
+        {
+          title: "Claim after deadline?",
+          message: (
+            <>
+              Claim <strong>{amountStr}</strong> now that the deadline has
+              passed? This cannot be undone.
+            </>
+          ),
+          confirmLabel: "Claim funds",
+          danger: true,
+        }
+      )
+    );
+  }
+  if (canReclaim) {
+    actions.push(
+      actionBtn("Reclaim after deadline", "reclaim", "btn-danger", async () => {
+        const vault = await vaultOf();
+        const clientAta = await ensureAta(escrow.mint, escrow.client);
+        return program()
+          .methods.reclaimAfterDeadline()
+          .accounts({
+            escrow: escrow.publicKey,
+            client: publicKey!,
+            vault,
+            clientAta,
+            tokenProgram: tokenProgramId,
+          })
+          .rpc();
+      },
+        {
+          title: "Reclaim escrow?",
+          message: (
+            <>
+              Reclaim <strong>{amountStr}</strong>? The freelancer never
+              accepted this job. This cannot be undone.
+            </>
+          ),
+          confirmLabel: "Reclaim",
+          danger: true,
+        }
+      )
     );
   }
   if (
-    (status === "Funded" || status === "Delivered") &&
+    (status === "Funded" || status === "InProgress" || status === "Delivered") &&
     (isClient || isFreelancer)
   ) {
     actions.push(
@@ -221,17 +347,50 @@ export default function EscrowDetail({
         program()
           .methods.raiseDispute()
           .accounts({ escrow: escrow.publicKey, authority: publicKey! })
-          .rpc()
+          .rpc(),
+        {
+          title: "Raise a dispute?",
+          message: (
+            <>
+              Raise a dispute over <strong>{amountStr}</strong>? Only the
+              arbiter can resolve it, and their decision is final.
+            </>
+          ),
+          confirmLabel: "Raise dispute",
+          danger: true,
+        }
       )
     );
   }
   if (status === "Disputed" && isArbiter) {
     actions.push(
       actionBtn("Resolve: pay freelancer", "resolve-yes", "btn-success", async () =>
-        resolve(true)
+        resolve(true),
+        {
+          title: "Resolve dispute?",
+          message: (
+            <>
+              Pay <strong>{amountStr}</strong> to the freelancer? This is
+              final and cannot be undone.
+            </>
+          ),
+          confirmLabel: "Pay freelancer",
+          danger: true,
+        }
       ),
       actionBtn("Resolve: refund client", "resolve-no", "btn-danger", async () =>
-        resolve(false)
+        resolve(false),
+        {
+          title: "Resolve dispute?",
+          message: (
+            <>
+              Refund <strong>{amountStr}</strong> to the client? This is
+              final and cannot be undone.
+            </>
+          ),
+          confirmLabel: "Refund client",
+          danger: true,
+        }
       )
     );
   }
@@ -288,19 +447,29 @@ export default function EscrowDetail({
         <Timeline status={escrow.status} />
         <dl className="kv">
           <dt>Escrow address</dt>
-          <dd className="addr">{escrow.publicKey.toBase58()}</dd>
+          <dd>
+            <ExplorerAddr addr={escrow.publicKey.toBase58()} />
+          </dd>
           <dt>Client</dt>
-          <dd className="addr">{escrow.client.toBase58()}</dd>
+          <dd>
+            <ExplorerAddr addr={escrow.client.toBase58()} />
+          </dd>
           <dt>Freelancer</dt>
-          <dd className="addr">{escrow.freelancer.toBase58()}</dd>
+          <dd>
+            <ExplorerAddr addr={escrow.freelancer.toBase58()} />
+          </dd>
           <dt>Arbiter</dt>
-          <dd className="addr">{escrow.arbiter.toBase58()}</dd>
+          <dd>
+            <ExplorerAddr addr={escrow.arbiter.toBase58()} />
+          </dd>
           <dt>Token mint</dt>
-          <dd className="addr">{escrow.mint.toBase58()}</dd>
+          <dd>
+            <ExplorerAddr addr={escrow.mint.toBase58()} />
+          </dd>
           <dt>Deadline</dt>
           <dd>
             {formatDeadline(escrow.deadline)}
-            {pastDeadline && (status === "Funded" || status === "Delivered") && (
+            {pastDeadline && (status === "Funded" || status === "InProgress" || status === "Delivered") && (
               <span style={{ color: "var(--warning)", marginLeft: 8 }}>· passed</span>
             )}
           </dd>
@@ -308,9 +477,34 @@ export default function EscrowDetail({
           <dd className="addr">{new BN(escrow.seed.toString()).toString()}</dd>
         </dl>
 
-        {notice && <div className={`notice ${notice.kind}`}>{notice.text}</div>}
+        {notice && (
+          <div className={`notice ${notice.kind}`}>
+            {notice.text}
+            {notice.sig && (
+              <>
+                {" "}
+                <a
+                  href={`https://explorer.solana.com/tx/${notice.sig}?cluster=devnet`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="link"
+                >
+                  View on explorer ↗
+                </a>
+              </>
+            )}
+          </div>
+        )}
 
         {actions.length > 0 && <div className="actions">{actions}</div>}
+
+        {status === "Funded" && isClient && (
+          <div className="notice notice-info">
+            Refund is only available until the freelancer accepts the job. After
+            that, funds move only via release, deadline claim, or arbiter
+            resolution.
+          </div>
+        )}
 
         {!wallet.connected && (
           <div className="notice notice-warn">

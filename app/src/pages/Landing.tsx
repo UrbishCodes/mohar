@@ -15,9 +15,9 @@ export default function Landing({
         <p className="tagline">SEALED. SETTLED. PAID.</p>
         <p className="lede">
           Escrow for Nepali freelancers working with international clients.
-          The client locks USDC in a smart-contract vault — the freelancer
-          delivers, the client releases, and nobody gets ghosted. If the
-          client disappears, the freelancer claims after the deadline.
+          The client funds a vault, the freelancer accepts and delivers, the
+          client releases — and if anyone disappears, the deadline rules
+          decide who gets paid.
         </p>
         <div className="hero-cta">
           <button className="btn btn-primary" onClick={() => go({ name: "create" })}>
@@ -44,28 +44,28 @@ export default function Landing({
       <div className="steps">
         <div className="card step-card">
           <div className="num">1</div>
-          <h3>Client locks USDC</h3>
-          <p>The client funds a vault controlled by the Mohar program. The money is sealed — neither side can touch it alone.</p>
+          <h3>Client funds escrow</h3>
+          <p>The client names a freelancer and an arbiter, sets an amount and a deadline, and locks the full amount in a vault controlled by the Mohar program.</p>
         </div>
         <div className="card step-card">
           <div className="num">2</div>
-          <h3>Freelancer delivers</h3>
-          <p>Work gets done off-chain as usual. The freelancer marks the escrow delivered when the work ships.</p>
+          <h3>Freelancer accepts</h3>
+          <p>The freelancer accepts the job. The client can cancel and reclaim only before this point — once accepted, the funds move only by release, deadline claim, or arbiter decision.</p>
         </div>
         <div className="card step-card">
           <div className="num">3</div>
-          <h3>Client releases</h3>
-          <p>Happy with the work? One click releases the full amount to the freelancer. No invoices lost in DMs.</p>
+          <h3>Freelancer delivers</h3>
+          <p>Work gets done off-chain as usual. The freelancer marks the escrow delivered when the work ships — a signal, not a verification.</p>
         </div>
         <div className="card step-card">
           <div className="num">4</div>
-          <h3>Ghost protection</h3>
-          <p>If the client vanishes after the deadline, the freelancer claims the funds directly. No more "I'll pay next week".</p>
+          <h3>Client releases</h3>
+          <p>Happy with the work? One click releases the full amount to the freelancer. If the work isn't done, dispute <em>before</em> the deadline — that blocks the freelancer's claim and the arbiter decides. Otherwise, past the deadline: the freelancer claims on accepted jobs, or the client reclaims if never accepted.</p>
         </div>
         <div className="card step-card">
           <div className="num">5</div>
-          <h3>Fair disputes</h3>
-          <p>Either side can raise a dispute. A mutually-agreed arbiter reviews and releases or refunds.</p>
+          <h3>Disputes, if needed</h3>
+          <p>Either side can raise a dispute while the escrow is active. The named arbiter then decides: pay the freelancer or refund the client. Their call is final.</p>
         </div>
       </div>
 
