@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-labelledby="t d">
+  <title id="t">Mohar</title>
+  <desc id="d">Mohar logo and the tagline Sealed. Settled. Paid. On-chain USDC escrow for freelancers on Solana.</desc>
+  <rect width="1280" height="320" fill="#0C3B3C"/>
+  <rect x="0.5" y="0.5" width="1279" height="319" fill="none" stroke="#35726D" stroke-opacity=".6"/>
+  <g transform="translate(88 56) scale(0.82)">
+    <svg width="208" height="208" viewBox="24 24 208 208" x="0" y="0" overflow="visible">
+      <path fill="#FFF6E9" d="M166.71 41.63A97.5 97.5 0 1 0 213.87 88.79A13.5 13.5 0 0 0 189.39 100.21A70.5 70.5 0 1 1 155.29 66.11A13.5 13.5 0 0 0 166.71 41.63Z"/>
+      <path fill="#FFF6E9" d="M107 99.5H134L150 115.5V154.5A6 6 0 0 1 144 160.5H107A6 6 0 0 1 101 154.5V105.5A6 6 0 0 1 107 99.5Z"/>
+      <path fill="#E8382F" fill-rule="evenodd" d="M123.19 125.51L133.35 135.67L134.23 134.78L136.92 137.47L136.04 138.35L142.47 144.79A2.25 2.25 0 0 1 139.29 147.97L132.85 141.54L131.97 142.42L129.28 139.73L130.17 138.85L120.01 128.69A9.6 9.6 0 1 1 123.19 125.51Z M110.3 120.5A4.7 4.7 0 1 0 119.7 120.5A4.7 4.7 0 1 0 110.3 120.5Z"/>
+      <path fill="#E8382F" d="M184.27 49.53A21.7 21.7 0 1 0 227.67 49.53A21.7 21.7 0 1 0 184.27 49.53Z"/>
+      <path fill="#FFF6E9" d="M193.32 47.23A5.65 5.65 0 0 1 204.62 47.23A1.7 1.7 0 0 1 201.22 47.23A2.25 2.25 0 0 0 196.72 47.23A1.7 1.7 0 0 1 193.32 47.23ZM207.32 47.23A5.65 5.65 0 0 1 218.62 47.23A1.7 1.7 0 0 1 215.22 47.23A2.25 2.25 0 0 0 210.72 47.23A1.7 1.7 0 0 1 207.32 47.23Z"/>
+    </svg>
+  </g>
+  <g font-family="Fraunces, 'Iowan Old Style', Georgia, 'Times New Roman', serif" fill="#FFF6E9">
+    <text x="300" y="150" font-size="84" font-weight="700" letter-spacing="-1">Mohar</text>
+    <text x="300" y="212" font-size="34" font-weight="600" fill="#A8C4BF">Sealed. Settled. Paid.</text>
+  </g>
+  <g font-family="'DM Sans', 'Segoe UI', system-ui, -apple-system, sans-serif" fill="#A8C4BF">
+    <text x="300" y="258" font-size="22">On-chain USDC escrow for freelancers, on Solana</text>
+  </g>
+  <g font-family="'Noto Sans Devanagari', 'Nirmala UI', 'Mangal', sans-serif" fill="#FFF6E9" fill-opacity=".9">
+    <text x="1192" y="86" font-size="34" text-anchor="end">मोहर</text>
+  </g>
+</svg>
