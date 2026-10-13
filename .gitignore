@@ -24,17 +24,22 @@ logs/
 .cursor/hooks.json
 
 # GUARDRAIL: plan/design docs live ONLY in the private build repo
+# (anchored to root — the public docs under docs/ are allowed)
 
-PRD.md
-ARCHITECTURE.md
-PRODUCT.md
-DESIGN.md
-RULES.md
-TASKS.md
-MEMORY.md
-DECISIONS.md
-continuation_plan.md
+/PRD.md
+/ARCHITECTURE.md
+/PRODUCT.md
+/DESIGN.md
+/RULES.md
+/TASKS.md
+/MEMORY.md
+/DECISIONS.md
+/continuation_plan.md
 
-#otherdocs
-docs/
+#otherdocs — only the four public docs below are tracked under docs/
+docs/*
+!docs/USER_GUIDE.md
+!docs/ARCHITECTURE.md
+!docs/DEVELOPMENT.md
+!docs/FAQ.md
 scripts/
