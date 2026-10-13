@@ -1,6 +1,15 @@
 import type { View } from "./TopBar";
+import { CLUSTERS, type ClusterName } from "../lib/config";
 
-export function Footer({ go }: { go: (v: View) => void }) {
+export function Footer({
+  go,
+  cluster,
+  onCluster,
+}: {
+  go: (v: View) => void;
+  cluster: ClusterName;
+  onCluster: (c: ClusterName) => void;
+}) {
   return (
     <footer className="footer">
       <div className="footer-inner">
@@ -20,14 +29,6 @@ export function Footer({ go }: { go: (v: View) => void }) {
           </button>
           <a
             className="link"
-            href="https://github.com/UrbishCodes"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Contact
-          </a>
-          <a
-            className="link"
             href="https://github.com/UrbishCodes/mohar"
             target="_blank"
             rel="noreferrer"
@@ -43,6 +44,21 @@ export function Footer({ go }: { go: (v: View) => void }) {
             Report a bug
           </a>
         </nav>
+        <div
+          className="footer-net"
+          role="group"
+          aria-label="Solana network"
+        >
+          {(Object.keys(CLUSTERS) as ClusterName[]).map((c) => (
+            <button
+              key={c}
+              aria-pressed={cluster === c}
+              onClick={() => cluster !== c && onCluster(c)}
+            >
+              {CLUSTERS[c].label}
+            </button>
+          ))}
+        </div>
       </div>
     </footer>
   );
