@@ -33,10 +33,3 @@ export function useTheme(): Theme {
 
   return { mode, setMode, resolved: mode };
 }
-
-/** Theme-correct logo file per the brand guide.
- * Uses the transparent locked marks (no baked-in tile), so the logo blends
- * seamlessly into the page background in both themes. */
-export function logoFor(resolved: "light" | "dark"): string {
-  return resolved === "dark" ? "/mohar-mark-dark.svg" : "/mohar-mark-light.svg";
-}
