@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletButton } from "./WalletButton";
-import { CLUSTERS, setCluster, type ClusterName } from "../lib/config";
-import { logoFor, type Theme, type ThemeMode } from "../lib/theme";
+import { MoharMark } from "./MoharMark";
+import type { ClusterName } from "../lib/config";
+import type { Theme, ThemeMode } from "../lib/theme";
 
 export type View =
   | { name: "landing" }
@@ -50,87 +52,112 @@ export function TopBar({
   view,
   go,
   cluster,
-  onCluster,
   theme,
 }: {
   view: View;
   go: (v: View) => void;
   cluster: ClusterName;
-  onCluster: (c: ClusterName) => void;
   theme: Theme;
 }) {
   const { connected } = useWallet();
-  const { mode, setMode, resolved } = theme;
-
-  const switchCluster = (c: ClusterName) => {
-    if (c !== cluster) {
-      setCluster(c);
-      onCluster(c);
-    }
-  };
+  const { mode, setMode } = theme;
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const cycleTheme = () => setMode(mode === "dark" ? "light" : "dark");
+  const nav = (v: View) => {
+    setMenuOpen(false);
+    go(v);
+  };
+
+  const navBtn = (v: View, label: string, opts?: { primary?: boolean }) => (
+    <button
+      key={label}
+      className={`${opts?.primary ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}${
+        !opts?.primary && view.name === v.name ? " active" : ""
+      }`}
+      onClick={() => nav(v)}
+      aria-current={!opts?.primary && view.name === v.name ? "page" : undefined}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <header className="topbar">
-      <div className="brand" onClick={() => go({ name: "landing" })}>
-        <img
-          className="brand-mark"
-          src={logoFor(resolved)}
-          alt=""
-          aria-hidden="true"
-          width={44}
-          height={44}
-        />
-        <div className="brand-name">Mohar</div>
-      </div>
-      <div className="topbar-actions">
+      <div className="topbar-in">
         <button
-          className={`btn btn-ghost${view.name === "landing" ? " active" : ""}`}
-          onClick={() => go({ name: "landing" })}
+          className="brand"
+          onClick={() => nav({ name: "landing" })}
+          aria-label="Mohar home"
         >
-          About
+          <MoharMark size={30} />
+          <span className="brand-name">Mohar</span>
+          {cluster === "devnet" && <span className="netdot">Devnet</span>}
         </button>
-        <button
-          className={`btn btn-ghost${view.name === "profile" ? " active" : ""}`}
-          onClick={() => go({ name: "profile" })}
-        >
-          Profile
-        </button>
-        {connected && (
+
+        <nav className="topbar-actions hide-sm" aria-label="Primary">
+          {navBtn({ name: "landing" }, "About")}
+          {navBtn({ name: "guide" }, "How it works")}
+          {navBtn({ name: "profile" }, "Profile")}
+          {connected && navBtn({ name: "dashboard" }, "Dashboard")}
+          {connected && navBtn({ name: "create" }, "+ New escrow", { primary: true })}
+        </nav>
+
+        <div className="topbar-actions">
           <button
-            className={`btn btn-ghost${view.name === "dashboard" ? " active" : ""}`}
-            onClick={() => go({ name: "dashboard" })}
+            className="theme-toggle hide-md"
+            onClick={cycleTheme}
+            aria-label={`Theme: ${mode}. Activate to change.`}
+            title={`Theme: ${mode}`}
           >
-            Dashboard
+            <ThemeIcon mode={mode} />
           </button>
-        )}
-        {connected && (
-          <button className="btn btn-primary" onClick={() => go({ name: "create" })}>
-            + New escrow
+          <WalletButton />
+          <button
+            className="btn btn-ghost btn-sm menu-btn"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+          >
+            ☰
           </button>
-        )}
-        <button
-          className="theme-toggle"
-          onClick={cycleTheme}
-          aria-label={`Theme: ${mode}. Activate to change.`}
-          title={`Theme: ${mode}`}
-        >
-          <ThemeIcon mode={mode} />
-        </button>
-        <div className="cluster-toggle">
-          {(Object.keys(CLUSTERS) as ClusterName[]).map((c) => (
-            <button
-              key={c}
-              className={cluster === c ? "active" : ""}
-              onClick={() => switchCluster(c)}
-            >
-              {CLUSTERS[c].label}
-            </button>
-          ))}
         </div>
-        <WalletButton />
       </div>
+
+      {menuOpen && (
+        <div
+          className="menu-sheet"
+          onClick={(e) => e.target === e.currentTarget && setMenuOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu"
+        >
+          <div className="menu-panel">
+            {navBtn({ name: "landing" }, "About")}
+            {navBtn({ name: "guide" }, "How it works")}
+            {navBtn({ name: "profile" }, "Profile")}
+            {connected && navBtn({ name: "dashboard" }, "Dashboard")}
+            {connected &&
+              navBtn({ name: "create" }, "+ New escrow", { primary: true })}
+            <div className="menu-row">
+              <span>Theme: {mode}</span>
+              <button
+                className="theme-toggle"
+                onClick={cycleTheme}
+                aria-label="Toggle theme"
+              >
+                <ThemeIcon mode={mode} />
+              </button>
+            </div>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => setMenuOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
