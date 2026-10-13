@@ -6,7 +6,7 @@ import {
 import { ConnectWalletModalProvider } from "./components/ConnectWalletModal";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
 import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
-import { CLUSTERS, getCluster, type ClusterName } from "./lib/config";
+import { CLUSTERS, getCluster, setCluster, type ClusterName } from "./lib/config";
 import { useTheme } from "./lib/theme";
 import { TopBar, type View } from "./components/TopBar";
 import { Footer } from "./components/Footer";
@@ -105,10 +105,9 @@ export default function App() {
             view={view}
             go={go}
             cluster={cluster}
-            onCluster={setClusterState}
             theme={theme}
           />
-          {view.name === "landing" && <Landing go={go} theme={theme} />}
+          {view.name === "landing" && <Landing go={go} />}
           {view.name === "dashboard" && <Dashboard go={go} />}
           {view.name === "create" && <CreateEscrow go={go} />}
           {view.name === "detail" && (
@@ -118,7 +117,14 @@ export default function App() {
           {view.name === "terms" && <Terms go={go} />}
           {view.name === "guide" && <Guide go={go} />}
           {view.name === "profile" && <ProfilePage go={go} />}
-          <Footer go={go} />
+          <Footer
+            go={go}
+            cluster={cluster}
+            onCluster={(c) => {
+              setCluster(c);
+              setClusterState(c);
+            }}
+          />
           <ConsentModal go={go} view={view} />
           </ConfirmProvider>
         </ConnectWalletModalProvider>
