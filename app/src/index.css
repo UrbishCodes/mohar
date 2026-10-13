@@ -260,6 +260,13 @@ button {
   animation: mohar-modal-pop 180ms var(--ease);
 }
 
+/* Dark theme: no drop shadow on the modal at all — the subtle light
+   border alone defines the card edge against the dark overlay. */
+:root:not([data-theme="light"]) .mohar-modal-card {
+  box-shadow: none;
+  border: 1px solid rgb(255 246 233 / 0.1);
+}
+
 .mohar-modal-close {
   position: absolute;
   top: 14px;
